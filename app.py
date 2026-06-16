@@ -6,7 +6,7 @@ import pandas as pd
 
 # 1. จัดการฐานข้อมูล (เอาฟิลด์เวลาออก เหลือเฉพาะวันที่)
 def init_db():
-    conn = sqlite3.connect('document_management_v9.db')
+    conn = sqlite3.connect('document_management_v10.db')
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS docs_pool (
@@ -111,7 +111,7 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
                 time_lib.sleep(3) # หน่วงเวลา 3 วินาที
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            conn = sqlite3.connect('document_management_v9.db')
+            conn = sqlite3.connect('document_management_v10.db')
             c = conn.cursor()
             c.execute('''
                 INSERT INTO docs_pool (
@@ -147,7 +147,7 @@ else:
     # ฟังก์ชันหน้าต่างลอยลอยขึ้นมาตรงกลางจอเมื่อสั่งรัน
     @st.dialog("🖊️ ฟอร์มลงชื่อตรวจรับรองเอกสาร", width="large")
     def show_inspection_modal(doc_id):
-        conn = sqlite3.connect('document_management_v9.db')
+        conn = sqlite3.connect('document_management_v10.db')
         c = conn.cursor()
         c.execute("SELECT * FROM docs_pool WHERE id=?", (doc_id,))
         doc_data = c.fetchone()
@@ -197,7 +197,7 @@ else:
                 if not inspector_input:
                     st.error("❌ กรุณากรอกชื่อผู้ตรวจเอกสารด้วยครับ")
                 else:
-                    conn = sqlite3.connect('document_management_v9.db')
+                    conn = sqlite3.connect('document_management_v10.db')
                     c = conn.cursor()
                     c.execute('''
                         UPDATE docs_pool 
@@ -211,7 +211,7 @@ else:
                     st.rerun()
 
     # --- โครงสร้างหน้าหลักฝั่งผู้ตรวจ ---
-    conn = sqlite3.connect('document_management_v9.db')
+    conn = sqlite3.connect('document_management_v10.db')
     df_all = pd.read_sql_query("SELECT * FROM docs_pool ORDER BY id DESC", conn)
     conn.close()
     
