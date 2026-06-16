@@ -7,10 +7,10 @@ from streamlit_gsheets import GSheetsConnection
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
 
-# ✨ เพิ่ม CSS เพื่อซ่อน Toolbar ระบบ (Share, Star, Edit, GitHub) และจัดการลายน้ำ
+# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำใหม่
 st.markdown("""
     <style>
-        /* 1. ซ่อนเครื่องมือ Streamlit Toolbar (Share, Star, Edit, GitHub, Deploy) ทั้งหมด */
+        /* 1. ซ่อนเครื่องมือ Streamlit Toolbar ทั้งหมด */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
@@ -51,25 +51,21 @@ st.markdown("""
             color: #ffffff !important; 
         }
 
-        /* 2. สร้างลายน้ำลอย (Floating Watermark) ไว้มุมขวาบนของหน้าต่างหลัก */
-        .watermark {
+        /* 2. บังคับให้บล็อกลายน้ำใน Sidebar อยู่ติดขอบล่างสุดเสมอ (Fixed to Sidebar Bottom) */
+        .sidebar-watermark {
             position: fixed;
-            top: 15px;
-            right: 25px;
+            bottom: 20px;
+            left: 20px;
+            width: 260px; /* ความกว้างมาตรฐานของ Sidebar */
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4) !important; /* ตัวอักษรสีขาวโปร่งแสง 40% */
+            font-size: 13px;
             font-family: 'Sarabun', sans-serif;
-            font-size: 14px;
-            font-weight: bold;
-            color: rgba(128, 0, 0, 0.35); /* สีแดงเลือดหมูแบบโปร่งแสง 35% */
-            z-index: 999999;
-            pointer-events: none; /* ป้องกันการกดโดน */
-            letter-spacing: 1px;
-            border: 1px solid rgba(128, 0, 0, 0.2);
-            padding: 3px 8px;
-            border-radius: 5px;
+            letter-spacing: 0.5px;
+            pointer-events: none;
+            z-index: 999;
         }
     </style>
-    
-    <div class="watermark">© Patchara.mu</div>
 """, unsafe_allow_html=True)
 
 # ฟังก์ชันเชื่อมต่อ Google Sheets ดึงข้อมูลจากคีย์ลับใน Secrets
@@ -77,7 +73,7 @@ def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
     except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
+        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สาย in Secrets")
         st.stop()
 
 conn = get_gsheet_connection()
@@ -116,14 +112,16 @@ if not st.session_state.logged_in:
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
 st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ สารบรรณ</h2>", unsafe_allow_html=True)
+st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
-
-# ใส่ลายน้ำกำกับไว้ที่ท้าย Sidebar เพิ่มความสวยงาม
-st.sidebar.markdown("<br><br><br><p style='text-align:center; color:rgba(255,255,255,0.4); font-size:12px;'>Developed by Patchara.mu</p>", unsafe_allow_html=True)
+st.sidebar.write("---")
 
 if st.sidebar.button("🚪 ออกจากระบบ"):
     st.session_state.logged_in = False; st.rerun()
+
+# ✨ ฝังกล่องลายน้ำไว้ใน Sidebar และใช้ CSS บังคับให้ดีดลงไปอยู่ขอบล่างสุด
+st.sidebar.markdown('<div class="sidebar-watermark">Developed by Patchara.mu</div>', unsafe_allow_html=True)
 
 status_options = ["ผ่าน", "ไม่ผ่าน"]
 
@@ -282,7 +280,7 @@ else:
         else:
             df_filtered = df_all
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>สถานะรวม</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
