@@ -56,9 +56,9 @@ st.markdown("""
             position: fixed;
             bottom: 20px;
             left: 20px;
-            width: 260px; /* ความกว้างมาตรฐานของ Sidebar */
+            width: 260px; 
             text-align: center;
-            color: rgba(255, 255, 255, 0.4) !important; /* ตัวอักษรสีขาวโปร่งแสง 40% */
+            color: rgba(255, 255, 255, 0.4) !important; 
             font-size: 13px;
             font-family: 'Sarabun', sans-serif;
             letter-spacing: 0.5px;
@@ -73,7 +73,7 @@ def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
     except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สาย in Secrets")
+        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
         st.stop()
 
 conn = get_gsheet_connection()
@@ -120,7 +120,7 @@ st.sidebar.write("---")
 if st.sidebar.button("🚪 ออกจากระบบ"):
     st.session_state.logged_in = False; st.rerun()
 
-# ✨ ฝังกล่องลายน้ำไว้ใน Sidebar และใช้ CSS บังคับให้ดีดลงไปอยู่ขอบล่างสุด
+# ฝังกล่องลายน้ำไว้ใน Sidebar
 st.sidebar.markdown('<div class="sidebar-watermark">Developed by Patchara.mu</div>', unsafe_allow_html=True)
 
 status_options = ["ผ่าน", "ไม่ผ่าน"]
@@ -141,11 +141,6 @@ def load_data():
             if col not in df.columns: df[col] = "-"
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
-
-def clean_display_table(df_input):
-    res_df = df_input[['id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status']].copy()
-    res_df.columns = ['ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน']
-    return res_df
 
 
 # ==========================================
@@ -206,15 +201,42 @@ if st.session_state.user_role == "creator":
             st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
+    # ✨ ปรับปรุงหัวตารางฝั่งผู้บันทึกให้สวยหรูสไตล์สีแดงเลือดหมูเหมือนฝั่งผู้ตรวจเรียบร้อยครับ
     st.write("---")
     st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
     df_raw = load_data()
     if not df_raw.empty:
-        df_clean = clean_display_table(df_raw)
         sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูลด่วนในตาราง (เลขหนังสือ / ชื่อผู้ยื่น)")
         if sq:
-            df_clean = df_clean[df_clean['เลขหนังสือ'].str.contains(sq, case=False, na=False) | df_clean['ชื่อ-สกุลผู้ยื่น'].str.contains(sq, case=False, na=False)]
-        st.dataframe(df_clean, use_container_width=True, hide_index=True)
+            df_filtered = df_raw[df_raw['doc_id_text'].str.contains(sq, case=False, na=False) | df_raw['fullname'].str.contains(sq, case=False, na=False)]
+        else:
+            df_filtered = df_raw
+
+        # หัวข้อตารางสีแดงเลือดหมูสุดหรูหราแบบเดียวกับฝั่งผู้ตรวจ
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
+
+        for _, row in df_filtered.iterrows():
+            st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
+            c_id, c_no, c_name, c_type, c_user, c_admin, c_status = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0])
+            
+            c_id.write(f"{int(row['id'])}")
+            c_no.write(f"{row['doc_id_text']}")
+            c_name.write(f"{row['fullname']}")
+            c_type.write(f"{row['doc_type']}")
+            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
+            
+            date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
+            
+            if row['check_status'] == 'รอตรวจเอกสาร':
+                c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'อนุมัติ':
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'ไม่อนุมัติ':
+                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
+            else:
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
 
