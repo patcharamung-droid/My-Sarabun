@@ -2,25 +2,28 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 import pandas as pd
+from streamlit_signature_pad import st_signature_pad
 
-# 1. ฟังก์ชันจัดการฐานข้อมูล (ปรับโครงสร้างเพื่อรองรับฟิลด์ใหม่)
+# 1. จัดการฐานข้อมูล (ปรับโครงสร้างเพื่อรองรับสถานะการตรวจและลายเซ็น)
 def init_db():
-    conn = sqlite3.connect('document_checklist_v2.db')
+    conn = sqlite3.connect('document_flow_system.db')
     c = conn.cursor()
     c.execute('''
-        CREATE TABLE IF NOT EXISTS checklists (
+        CREATE TABLE IF NOT EXISTS documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             source_place TEXT,
             doc_id_text TEXT,
             fullname TEXT,
             doc_type TEXT,
-            doc1_status TEXT,
-            doc2_status TEXT,
-            doc3_status TEXT,
-            doc4_status TEXT,
-            doc5_status TEXT,
-            doc6_status TEXT,
-            inspector TEXT,
+            creator_signature TEXT, -- เก็บภาพลายเซ็นผู้บันทึกเป็น Base64
+            doc1_status TEXT DEFAULT 'รอการตรวจ',
+            doc2_status TEXT DEFAULT 'รอการตรวจ',
+            doc3_status TEXT DEFAULT 'รอการตรวจ',
+            doc4_status TEXT DEFAULT 'รอการตรวจ',
+            doc5_status TEXT DEFAULT 'รอการตรวจ',
+            doc6_status TEXT DEFAULT 'รอการตรวจ',
+            inspector TEXT DEFAULT 'ยังไม่ได้ตรวจ',
+            check_status TEXT DEFAULT 'รอดำเนินการ', -- รอดำเนินการ / ตรวจเสร็จแล้ว
             timestamp TEXT
         )
     ''')
@@ -29,21 +32,20 @@ def init_db():
 
 init_db()
 
-# ตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="ระบบสารบรรณ & Dashboard", layout="wide")
-st.title("📑 ระบบบันทึกและตรวจเช็คสถานะเอกสารสารบรรณ")
+st.set_page_config(page_title="ระบบสารบรรณแยกสิทธิ์", layout="wide")
+st.title("📑 ระบบบันทึกและตรวจเช็คเอกสารสารบรรณ (แยกสิทธิ์ผู้ใช้)")
 
-# สร้างเมนูแท็บ (Tabs) แยกหน้าจอออกจากกัน
-tab_form, tab_dashboard = st.tabs(["✍️ บันทึกข้อมูลเอกสาร", "📊 Dashboard & รายการทั้งหมด"])
+# 2. แถบเลือกสิทธิ์ผู้ใช้งานที่แถบข้าง (Sidebar) เพื่อจำลองการเข้าระบบ
+st.sidebar.title("🔐 เลือกสถานะผู้ใช้งาน")
+user_role = st.sidebar.radio("ตำแหน่งของคุณ:", ["📝 ผู้บันทึกข้อมูล", "🔍 ผู้ตรวจสอบเอกสาร"])
 
 # ==========================================
-# 🟢 แท็บที่ 1: หน้าฟอร์มบันทึกข้อมูล (ปรับปรุงใหม่)
+# 🟢 ส่วนของ: 📝 ผู้บันทึกข้อมูล
 # ==========================================
-with tab_form:
-    st.subheader("กรอกข้อมูลการตรวจสอบเอกสาร")
-    with st.form(key='checklist_form', clear_on_submit=True):
-        
-        st.write("**✍️ ส่วนที่ 1: ข้อมูลทั่วไปของเอกสาร**")
+if user_role == "📝 ผู้บันทึกข้อมูล":
+    st.header("✍️ ฟอร์มบันทึกข้อมูลเอกสารเข้าใหม่")
+    
+    with st.form(key='creator_form'):
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.text_input("แหล่งที่มา *", placeholder="เช่น กองการเจ้าหน้าที่, หน่วยงานภายนอก")
@@ -53,112 +55,134 @@ with tab_form:
             doc_type = st.selectbox("ประเภทหนังสือ *", ["หนังสือภายนอก", "หนังสือภายใน", "หนังสือประทับตรา", "คำสั่ง/ประกาศ", "อื่นๆ"])
             
         st.write("---")
-        st.write("**🔍 ส่วนที่ 2: ผลการตรวจสอบเอกสาร (ผ่าน / ไม่ผ่าน)**")
-        status_options = ["ผ่าน", "ไม่ผ่าน"]
+        st.write("✍️ **ลงลายมือชื่อผู้บันทึกด้านล่างนี้ (ใช้เมาส์หรือนิ้วลากเซ็นได้เลย):**")
         
-        col_a, col_b = st.columns(2)
-        with col_a:
-            doc1 = st.radio("📄 เอกสาร 1", status_options, index=0, horizontal=True)
-            doc2 = st.radio("📄 เอกสาร 2", status_options, index=0, horizontal=True)
-            doc3 = st.radio("📄 เอกสาร 3", status_options, index=0, horizontal=True)
-        with col_b:
-            doc4 = st.radio("📄 เอกสาร 4", status_options, index=0, horizontal=True)
-            doc5 = st.radio("📄 เอกสาร 5", status_options, index=0, horizontal=True)
-            doc6 = st.radio("📄 เอกสาร 6", status_options, index=0, horizontal=True)
-
+        # กล่องสำหรับเซ็นลายเซ็น
+        signature = st_signature_pad(
+            fill_color="rgba(0, 0, 0, 0)",
+            stroke_color="black",
+            scale=1,
+            key="creator_sig",
+            height=150
+        )
+        
         st.write("---")
-        st.write("**👤 ส่วนที่ 3: ข้อมูลผู้ตรวจสอบ**")
-        inspector = st.text_input("ชื่อผู้ตรวจ *", placeholder="ระบุชื่อเจ้าหน้าที่ผู้ตรวจเช็ค")
-
-        st.write("---")
-        # ปุ่มบันทึกข้อมูล
-        submit_button = st.form_submit_button(label='💾 บันทึกข้อมูล')
+        submit_button = st.form_submit_button(label='💾 บันทึกและส่งตรวจ')
 
     if submit_button:
-        # ตรวจสอบว่ากรอกข้อมูลจำเป็นครบถ้วนหรือไม่
-        if not source_place or not doc_id_text or not fullname or not inspector:
-            st.error("❌ กรุณากรอกข้อมูลในช่องที่มีเครื่องหมาย * ให้ครบถ้วนก่อนทำการบันทึก")
+        if not source_place or not doc_id_text or not fullname:
+            st.error("❌ กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน")
+        elif signature is None:
+            st.error("❌ กรุณาเซ็นลายมือชื่อผู้บันทึกก่อนกดบันทึก")
         else:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            conn = sqlite3.connect('document_checklist_v2.db')
+            conn = sqlite3.connect('document_flow_system.db')
             c = conn.cursor()
+            
+            # บันทึกข้อมูลเริ่มต้น เอกสาร 1-6 จะถูกเซ็ตค่าเริ่มต้นเป็น 'รอการตรวจ'
             c.execute('''
-                INSERT INTO checklists (source_place, doc_id_text, fullname, doc_type, doc1_status, doc2_status, doc3_status, doc4_status, doc5_status, doc6_status, inspector, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (source_place, doc_id_text, fullname, doc_type, doc1, doc2, doc3, doc4, doc5, doc6, inspector, current_time))
+                INSERT INTO documents (source_place, doc_id_text, fullname, doc_type, creator_signature, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (source_place, doc_id_text, fullname, doc_type, signature, current_time))
             conn.commit()
             conn.close()
-            st.success(f"🎉 บันทึกข้อมูลของ คุณ {fullname} เรียบร้อยแล้ว! สามารถตรวจสอบรายงานได้ที่แท็บด้านบน")
+            st.success(f"🎉 บันทึกหนังสือเลขที่ {doc_id_text} และส่งไปยังผู้ตรวจเรียบร้อยแล้ว!")
 
 
 # ==========================================
-# 🔵 แท็บที่ 2: หน้า Dashboard & รายการแสดงข้อมูล
+# 🔵 ส่วนของ: 🔍 ผู้ตรวจสอบเอกสาร
 # ==========================================
-with tab_dashboard:
-    st.subheader("📊 สรุปผลภาพรวมและรายการข้อมูลทั้งหมด")
+else:
+    st.header("📊 เมนูรายการทั้งหมดและการตรวจประเมิน")
     
-    # ดึงข้อมูลมาแสดงผล
-    conn = sqlite3.connect('document_checklist_v2.db')
-    df = pd.read_sql_query('''
-        SELECT 
-            source_place as 'แหล่งที่มา',
-            doc_id_text as 'เลขหนังสือ', 
-            fullname as 'ชื่อ-นามสกุล', 
-            doc_type as 'ประเภท',
-            doc1_status as 'เอกสาร 1', 
-            doc2_status as 'เอกสาร 2', 
-            doc3_status as 'เอกสาร 3', 
-            doc4_status as 'เอกสาร 4', 
-            doc5_status as 'เอกสาร 5', 
-            doc6_status as 'เอกสาร 6',
-            inspector as 'ชื่อผู้ตรวจ',
-            timestamp as 'วันเวลาที่บันทึก'
-        FROM checklists 
-        ORDER BY id DESC
-    ''', conn)
+    conn = sqlite3.connect('document_flow_system.db')
+    df_all = pd.read_sql_query("SELECT * FROM documents ORDER BY id DESC", conn)
     conn.close()
-
-    if not df.empty:
-        # --- CARD สรุปสถิติด้านบน (KPI Metrics) ---
-        total_records = len(df)
-        
-        # ค้นหาเคสที่ไม่ผ่าน (ตรวจสอบเอกสาร 1-6 ว่ามีแถวไหนมีคำว่า "ไม่ผ่าน" ไหม)
-        failed_rows = df[df[['เอกสาร 1', 'เอกสาร 2', 'เอกสาร 3', 'เอกสาร 4', 'เอกสาร 5', 'เอกสาร 6']].eq('ไม่ผ่าน').any(axis=1)]
-        total_failed = len(failed_rows)
-        total_passed = total_records - total_failed
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric(label="📈 จำนวนรายการที่บันทึกทั้งหมด", value=f"{total_records} รายการ")
-        m2.metric(label="✅ ผ่านทุกเอกสาร", value=f"{total_passed} เคส")
-        m3.metric(label="❌ มีเอกสารไม่ผ่าน", value=f"{total_failed} เคส")
-        
-        st.write("---")
-        
-        # --- ตารางแสดงข้อมูลและการค้นหา ---
-        st.write("**📋 ตารางรายการแสดงข้อมูลทั้งหมด**")
-        
-        # กล่องค้นหาข้อมูลแบบครอบจักรวาล (ค้นหาตาม ชื่อ, เลขหนังสือ, หรือ แหล่งที่มาได้หมด)
-        search_query = st.text_input("🔍 ค้นหาข้อมูล (ระบุ แหล่งที่มา / เลขหนังสือ / ชื่อ-นามสกุล / ชื่อผู้ตรวจ)")
-        if search_query:
-            filtered_df = df[
-                df['แหล่งที่มา'].str.contains(search_query, case=False, na=False) | 
-                df['เลขหนังสือ'].str.contains(search_query, case=False, na=False) | 
-                df['ชื่อ-นามสกุล'].str.contains(search_query, case=False, na=False) |
-                df['ชื่อผู้ตรวจ'].str.contains(search_query, case=False, na=False)
-            ]
-        else:
-            filtered_df = df
-
-        # แสดงตารางข้อมูลแบบเต็มจอ
-        st.dataframe(filtered_df, use_container_width=True)
-        
-        # ปุ่มดาวน์โหลดไฟล์ CSV
-        csv = df.to_csv(index=False).encode('utf-8-sig')
-        st.download_button(
-            label="📥 ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ CSV (สำหรับเปิดใน Excel)",
-            data=csv,
-            file_name=f"รายงานสรุประบบเอกสารสารบรรณ_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime='text/csv',
-        )
+    
+    if df_all.empty:
+        st.info("💡 ขณะนี้ยังไม่มีเอกสารที่ถูกบันทึกเข้ามาในระบบ")
     else:
-        st.info("💡 ยังไม่มีข้อมูลในระบบ กรุณากรอกและบันทึกข้อมูลในแท็บ 'บันทึกข้อมูลเอกสาร' ก่อนครับ")
+        # แบ่งสัดส่วนหน้าจอ: ซ้ายเลือกรายการตรวจ / ขวาแสดงตารางแดชบอร์ด
+        col_action, col_table = st.columns([1, 2])
+        
+        with col_action:
+            st.subheader("🔍 เลือกรายการเพื่อทำการตรวจ")
+            
+            # ดึงรายการเลขหนังสือที่ยังไม่ตรวจ หรือ ตรวจแล้ว มาให้เลือกใน Dropdown
+            doc_list = [f"{row['id']} - {row['doc_id_text']} ({row['fullname']})" for _, row in df_all.iterrows()]
+            selected_doc = st.selectbox("เลือกเอกสารที่ต้องการตรวจ:", doc_list)
+            
+            # ดึง ID ออกมาจากข้อความที่เลือก
+            selected_id = int(selected_doc.split(" - ")[0])
+            doc_data = df_all[df_all['id'] == selected_id].iloc[0]
+            
+            st.write("---")
+            st.info(f"📁 **รายละเอียดหนังสือ:** {doc_data['doc_id_text']} \n\n👤 **ผู้ยื่น:** {doc_data['fullname']}")
+            
+            # แสดงลายเซ็นผู้บันทึกให้ผู้ตรวจเห็น
+            if doc_data['creator_signature']:
+                st.write("**🖋️ ลายเซ็นผู้บันทึก:**")
+                st.image(doc_data['creator_signature'], width=200)
+            
+            st.write("---")
+            st.write("**⚙️ ประเมินผลเอกสาร 1-6:**")
+            
+            # ฟอร์มทำรับผลการตรวจ ผ่าน/ไม่ผ่าน
+            with st.form(key='inspector_form'):
+                status_options = ["ผ่าน", "ไม่ผ่าน"]
+                
+                # ดึงค่าเดิมมาเป็น Default ถ้าเคยตรวจแล้ว
+                d1 = st.radio("เอกสาร 1", status_options, index=0 if doc_data['doc1_status'] == 'ผ่าน' else 1, horizontal=True)
+                d2 = st.radio("เอกสาร 2", status_options, index=0 if doc_data['doc2_status'] == 'ผ่าน' else 1, horizontal=True)
+                d3 = st.radio("เอกสาร 3", status_options, index=0 if doc_data['doc3_status'] == 'ผ่าน' else 1, horizontal=True)
+                d4 = st.radio("เอกสาร 4", status_options, index=0 if doc_data['doc4_status'] == 'ผ่าน' else 1, horizontal=True)
+                d5 = st.radio("เอกสาร 5", status_options, index=0 if doc_data['doc5_status'] == 'ผ่าน' else 1, horizontal=True)
+                d6 = st.radio("เอกสาร 6", status_options, index=0 if doc_data['doc6_status'] == 'ผ่าน' else 1, horizontal=True)
+                
+                inspector_name = st.text_input("ชื่อผู้ตรวจสอบ *", value="" if doc_data['inspector'] == "ยังไม่ได้ตรวจ" else doc_data['inspector'])
+                
+                save_inspection = st.form_submit_button(label="💾 บันทึกผลการตรวจ")
+                
+            if save_inspection:
+                if not inspector_name:
+                    st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนบันทึกผล")
+                else:
+                    conn = sqlite3.connect('document_flow_system.db')
+                    c = conn.cursor()
+                    c.execute('''
+                        UPDATE documents 
+                        SET doc1_status=?, doc2_status=?, doc3_status=?, doc4_status=?, doc5_status=?, doc6_status=?, inspector=?, check_status='ตรวจเสร็จแล้ว'
+                        WHERE id=?
+                    ''', (d1, d2, d3, d4, d5, d6, inspector_name, selected_id))
+                    conn.commit()
+                    conn.close()
+                    st.success("🎉 บันทึกผลการตรวจสอบเรียบร้อยแล้ว!")
+                    st.rerun() # รีเฟรชหน้าจอเพื่ออัปเดตตารางทันที
+
+        # ส่วนของตารางแดชบอร์ดด้านขวา
+        with col_table:
+            st.subheader("📋 รายการข้อมูลสถานะทั้งหมด")
+            
+            # ปรับแต่งการแสดงผลตารางให้สวยงาม
+            display_df = df_all[[
+                'source_place', 'doc_id_text', 'fullname', 'doc_type',
+                'doc1_status', 'doc2_status', 'doc3_status', 'doc4_status', 'doc5_status', 'doc6_status',
+                'inspector', 'check_status', 'timestamp'
+            ]].copy()
+            
+            display_df.columns = [
+                'แหล่งที่มา', 'เลขหนังสือ', 'ชื่อ-นามสกุล', 'ประเภท',
+                'เอกสาร 1', 'เอกสาร 2', 'เอกสาร 3', 'เอกสาร 4', 'เอกสาร 5', 'เอกสาร 6',
+                'ผู้ตรวจ', 'สถานะรวม', 'วันเวลาที่บันทึก'
+            ]
+            
+            st.dataframe(display_df, use_container_width=True)
+            
+            # ปุ่มดาวน์โหลดรายงาน
+            csv = display_df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button(
+                label="📥 ดาวน์โหลดตารางนี้เป็นไฟล์ CSV",
+                data=csv,
+                file_name=f"รายงานสถานะสารบรรณ_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime='text/csv',
+            )
