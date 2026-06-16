@@ -4,7 +4,7 @@ from datetime import datetime
 import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 
-# ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมู
+# ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
 
 st.markdown("""
@@ -12,13 +12,13 @@ st.markdown("""
         div.stButton > button:first-child { background-color: #800000; color: white; border-radius: 8px; font-weight: bold; }
         div.stButton > button:first-child:hover { background-color: #550000; color: #ffcccc; }
         div[data-testid="stForm"] { border: 2px solid #800000 !important; border-radius: 12px !important; background-color: #fffafb; padding: 25px !important; }
-        h1, h2, h3 { color: #800000 !important; }
+        h1, h2, h3 { color: #800000 !important; font-family: 'Sarabun', sans-serif; }
         section[data-testid="stSidebar"] { background-color: #4a0000; color: white; }
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { color: #ffffff !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# ฟังก์ชันเชื่อมต่อ Google Sheets ดึงข้อมูลจากคีย์ลับ
+# ฟังก์ชันเชื่อมต่อ Google Sheets ดึงข้อมูลจากคีย์ลับใน Secrets
 def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
@@ -74,18 +74,38 @@ def render_doc_row(label):
     with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด (ถ้ามี)", key=f"note_{label}")
     return status, note
 
-# ฟังก์ชันดึงข้อมูลจาก Google Sheets แบบ Real-time
+# ฟังก์ชันดึงข้อมูลจาก Google Sheets แบบ Real-time (บังคับเคลียร์แคชทุกล็อต)
 def load_data():
     try:
-        # อ่านข้อมูลและข้ามหัวแถวแรกมาทำ DataFrame
-        df = conn.read(ttl="0d")
-        df = df.dropna(subset=['doc_id_text']) # กรองเฉพาะแถวที่มีข้อมูลเลขหนังสือ
+        df = conn.read(ttl=0)
+        if df.empty:
+            return pd.DataFrame()
+        # เคลียร์ค่าว่างในระบบ
+        df = df.dropna(subset=['doc_id_text'])
+        # ตรวจสอบว่าคอลัมน์สำคัญครบถ้วนหรือไม่ ถ้าไม่มีให้สแตนด์บายค่าว่างไว้
+        required_cols = ['inspector_name', 'inspected_date_text', 'check_status']
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = "-"
         return df.sort_values(by="id", ascending=False)
-    except:
+    except Exception as e:
         return pd.DataFrame()
 
+# ฟังก์ชันจัดระเบียบตารางให้อ่านง่ายเป็นภาษาไทย
+def clean_display_table(df_input):
+    res_df = df_input[[
+        'id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 
+        'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status'
+    ]].copy()
+    res_df.columns = [
+        'ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 
+        'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน'
+    ]
+    return res_df
+
+
 # ==========================================
-# 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล
+# 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
     st.subheader("📝 ฟอร์มลงทะเบียนเอกสารและตรวจสอบเบื้องต้น")
@@ -124,16 +144,15 @@ if st.session_state.user_role == "creator":
             with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูลเข้า Google Sheet..."):
                 time_lib.sleep(3)
             
-            df_existing = load_data()
+            df_existing = conn.read(ttl=0).dropna(subset=['doc_id_text'])
             next_id = 1 if df_existing.empty else int(df_existing['id'].max()) + 1
             
-            # บันทึกข้อมูลเป็นแถวใหม่
             new_row = pd.DataFrame([{
                 "id": next_id, "source_place": source_place, "doc_id_text": doc_id_text, "fullname": fullname, "doc_type": doc_type,
                 "creator_name": creator_name, "created_date_text": str(created_date),
                 "doc1_status": doc1_status, "doc1_note": doc1_note, "doc2_status": doc2_status, "doc2_note": doc2_note,
                 "doc3_status": doc3_status, "doc3_note": doc3_note, "doc4_status": doc4_status, "doc4_note": doc4_note,
-                "doc5_status": doc5_status, "doc5_note": doc5_note, "doc6_status": doc6_status, "doc6_note": doc6_note,
+                "doc5_status": doc5_note, "doc5_note": doc5_note, "doc6_status": doc6_status, "doc6_note": doc6_note,
                 "inspector_name": "ยังไม่ได้ตรวจ", "inspected_date_text": "-", "check_status": "รอตรวจเอกสาร"
             }])
             
@@ -143,75 +162,115 @@ if st.session_state.user_role == "creator":
             st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
+    # ✨ แก้ไขข้อ 1: ปรับตารางประวัติผู้บันทึกเป็นระบบ st.dataframe สวยงาม ไม่ติดกันเป็นพืด อ่านง่ายครบถ้วน
     st.write("---")
-    st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการจาก Google Sheet สิทธิ์สำหรับดูเท่านั้น</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
     df_raw = load_data()
     if not df_raw.empty:
-        st.dataframe(df_raw[['id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 'created_date_text', 'inspector_name', 'check_status']], use_container_width=True, hide_index=True)
+        df_clean = clean_display_table(df_raw)
+        
+        sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูลด่วนในตาราง (เลขหนังสือ / ชื่อผู้ยื่น)")
+        if sq:
+            df_clean = df_clean[df_clean['เลขหนังสือ'].str.contains(sq, case=False, na=False) | 
+                                df_clean['ชื่อ-สกุลผู้ยื่น'].str.contains(sq, case=False, na=False)]
+        
+        st.dataframe(df_clean, use_container_width=True, hide_index=True)
+    else:
+        st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
+
 
 # ==========================================
-# 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร
+# 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
 # ==========================================
 else:
-    st.subheader("🔍 ศูนย์ควบคุมการพิจารณาตรวจสอบสิทธิ์")
+    st.subheader("🔍 ศูนย์ควบคุมการพิจารณาตรวจสอบสิทธิ์ผู้ตรวจอนุมัติ")
     
     @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสารกลาง", width="large")
     def show_inspection_modal(doc_id):
-        df_existing = load_data()
+        df_existing = conn.read(ttl=0).dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
         st.markdown(f"<h5>📦 ตรวจรับรองทะเบียนเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
-        st.write(f"**ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']}")
+        st.write(f"**ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} ({data['created_date_text']})")
         st.write("---")
         
         col_detail, col_form = st.columns([1, 1])
         with col_detail:
-            st.markdown("📋 **สรุปไฟล์แนบ:**")
+            st.markdown("📋 **สรุปไฟล์แนบตรวจสอบเบื้องต้น:**")
             for i in range(1, 7):
-                if f'doc{i}_status' in data and data[f'doc{i}_status'] != "ไม่ได้ระบุ":
-                    st.write(f"{'✅' if data[f'doc{i}_status']=='ผ่าน' else '❌'} เอกสาร {i}: **{data[f'doc{i}_status']}** ({data[f'doc{i}_note'] or '-'})")
+                status_key = f'doc{i}_status'
+                note_key = f'doc{i}_note'
+                if status_key in data and data[status_key] != "ไม่ได้ระบุ":
+                    note_val = data[note_key] if pd.notna(data[note_key]) else "-"
+                    st.write(f"{'✅' if data[status_key]=='ผ่าน' else '❌'} เอกสาร {i}: **{data[status_key]}** (หมายเหตุ: {note_val})")
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("มติภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
+                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
-                inspected_date = st.date_input("วันที่ลงนามอนุมัติ *")
+                
+                # นำอินพุตวันที่กลับมาให้ผู้ตรวจบันทึกสิทธิ์ลงตารางชีต
+                inspected_date = st.date_input("วันที่ลงนามอนุมัติเอกสาร *", datetime.now().date())
                 submit_modal = st.form_submit_button("💾 ยืนยันผลมติภาพรวม")
                 
             if submit_modal:
-                # แก้ไขสถานะแถวเดิมใน Google Sheet
+                # ✨ แก้ไขข้อ 2: ผูกค่าตัวแปรวันที่ตรวจยิงกลับเข้าล็อกตำแหน่งแถวของ Google Sheet ให้ถูกต้องถาวร
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
                 df_existing.loc[df_existing['id'] == doc_id, 'check_status'] = final_status
                 df_existing.loc[df_existing['id'] == doc_id, 'inspected_date_text'] = str(inspected_date)
                 
                 conn.update(data=df_existing)
-                st.success("🎉 ปรับปรุงสถานะลง Google Sheet สำเร็จ!")
+                st.success("🎉 บันทึกผลตรวจและวันที่รับรองลง Google Sheet สำเร็จ!")
                 st.rerun()
 
     df_all = load_data()
     if df_all.empty:
-        st.info("💡 ขณะนี้ยังไม่มีรายการค้างใน Google Sheet")
+        st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        # แดชบอร์ดสถิติ
+        # แดชบอร์ดสรุปด้านบน
+        st.markdown("<h4 style='color:#800000;'>📊 แดชบอร์ดสรุปสถิติทะเบียนรวม</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("⏳ รอตรวจเอกสาร", len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร']))
-        m2.metric("🟢 อนุมัติแล้ว", len(df_all[df_all['check_status'] == 'อนุมัติ']))
-        m3.metric("🔴 ไม่อนุมัติ", len(df_all[df_all['check_status'] == 'ไม่อนุมัติ']))
-        m4.metric("⚪ ยกเลิก", len(df_all[df_all['check_status'] == 'ยกเลิก']))
+        m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
+        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติแล้ว</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิก</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิก'])}</h2></div>", unsafe_allow_html=True)
         
         st.write("---")
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภท</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:2.0;'>สถานะรวม</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
+        
+        search_query = st.text_input("🔍 ค้นหาด่วนในคลังสารบรรณ (เลขหนังสือ / ชื่อผู้ยื่น)")
+        if search_query:
+            df_filtered = df_all[df_all['doc_id_text'].str.contains(search_query, case=False, na=False) |
+                                 df_all['fullname'].str.contains(search_query, case=False, na=False)]
+        else:
+            df_filtered = df_all
 
-        for _, row in df_all.iterrows():
+        # แสดงรายการข้อมูลตารางหลักแนวคิดสากลและสวยงาม
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก (วันที่)</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>สถานะรวม</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+
+        for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_status, c_act = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 2.0, 1.2])
-            c_id.write(f"{row['id']}")
+            c_id, c_no, c_name, c_type, c_user, c_admin, c_status, c_act = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
+            
+            c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']}")
-            c_status.write(f"🏷️ {row['check_status']}")
+            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
             
-            if c_act.button("🔍 ตรวจ", key=f"btn_{row['id']}"):
+            # แสดงข้อมูลชื่อผู้ตรวจ พร้อมคอลัมน์ "วันที่ตรวจ" ตามบรีฟแก้ไขข้อ 2
+            date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
+            
+            if row['check_status'] == 'รอตรวจเอกสาร':
+                c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'อนุมัติ':
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'ไม่อนุมัติ':
+                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
+            else:
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+            
+            if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                 show_inspection_modal(int(row['id']))
             st.markdown("</div>", unsafe_allow_html=True)
