@@ -7,15 +7,69 @@ from streamlit_gsheets import GSheetsConnection
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
 
+# ✨ เพิ่ม CSS เพื่อซ่อน Toolbar ระบบ (Share, Star, Edit, GitHub) และจัดการลายน้ำ
 st.markdown("""
     <style>
-        div.stButton > button:first-child { background-color: #800000; color: white; border-radius: 8px; font-weight: bold; }
-        div.stButton > button:first-child:hover { background-color: #550000; color: #ffcccc; }
-        div[data-testid="stForm"] { border: 2px solid #800000 !important; border-radius: 12px !important; background-color: #fffafb; padding: 25px !important; }
-        h1, h2, h3 { color: #800000 !important; font-family: 'Sarabun', sans-serif; }
-        section[data-testid="stSidebar"] { background-color: #4a0000; color: white; }
-        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { color: #ffffff !important; }
+        /* 1. ซ่อนเครื่องมือ Streamlit Toolbar (Share, Star, Edit, GitHub, Deploy) ทั้งหมด */
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        div[data-testid="stToolbar"] {display: none !important;}
+        button[title="View source code"] {display: none !important;}
+        
+        /* ปรับแต่งปุ่มหลัก (Primary Buttons) ให้เป็นสีแดงเลือดหมู */
+        div.stButton > button:first-child { 
+            background-color: #800000; 
+            color: white; 
+            border-radius: 8px; 
+            font-weight: bold; 
+        }
+        div.stButton > button:first-child:hover { 
+            background-color: #550000; 
+            color: #ffcccc; 
+        }
+        
+        /* ปรับแต่งกรอบ Form ด้านบน */
+        div[data-testid="stForm"] { 
+            border: 2px solid #800000 !important; 
+            border-radius: 12px !important; 
+            background-color: #fffafb; 
+            padding: 25px !important; 
+        }
+        
+        h1, h2, h3 { 
+            color: #800000 !important; 
+            font-family: 'Sarabun', sans-serif; 
+        }
+        
+        /* ปรับแต่ง Sidebar */
+        section[data-testid="stSidebar"] { 
+            background-color: #4a0000; 
+            color: white; 
+        }
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
+            color: #ffffff !important; 
+        }
+
+        /* 2. สร้างลายน้ำลอย (Floating Watermark) ไว้มุมขวาบนของหน้าต่างหลัก */
+        .watermark {
+            position: fixed;
+            top: 15px;
+            right: 25px;
+            font-family: 'Sarabun', sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            color: rgba(128, 0, 0, 0.35); /* สีแดงเลือดหมูแบบโปร่งแสง 35% */
+            z-index: 999999;
+            pointer-events: none; /* ป้องกันการกดโดน */
+            letter-spacing: 1px;
+            border: 1px solid rgba(128, 0, 0, 0.2);
+            padding: 3px 8px;
+            border-radius: 5px;
+        }
     </style>
+    
+    <div class="watermark">© Patchara.mu</div>
 """, unsafe_allow_html=True)
 
 # ฟังก์ชันเชื่อมต่อ Google Sheets ดึงข้อมูลจากคีย์ลับใน Secrets
@@ -63,6 +117,11 @@ if not st.session_state.logged_in:
 # --- แถบควบคุมข้างทาง (Sidebar) ---
 st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ สารบรรณ</h2>", unsafe_allow_html=True)
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
+st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
+
+# ใส่ลายน้ำกำกับไว้ที่ท้าย Sidebar เพิ่มความสวยงาม
+st.sidebar.markdown("<br><br><br><p style='text-align:center; color:rgba(255,255,255,0.4); font-size:12px;'>Developed by Patchara.mu</p>", unsafe_allow_html=True)
+
 if st.sidebar.button("🚪 ออกจากระบบ"):
     st.session_state.logged_in = False; st.rerun()
 
@@ -74,33 +133,20 @@ def render_doc_row(label):
     with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด (ถ้ามี)", key=f"note_{label}")
     return status, note
 
-# ฟังก์ชันดึงข้อมูลจาก Google Sheets แบบ Real-time (บังคับเคลียร์แคชทุกล็อต)
 def load_data():
     try:
         df = conn.read(ttl=0)
-        if df.empty:
-            return pd.DataFrame()
-        # เคลียร์ค่าว่างในระบบ
+        if df.empty: return pd.DataFrame()
         df = df.dropna(subset=['doc_id_text'])
-        # ตรวจสอบว่าคอลัมน์สำคัญครบถ้วนหรือไม่ ถ้าไม่มีให้สแตนด์บายค่าว่างไว้
         required_cols = ['inspector_name', 'inspected_date_text', 'check_status']
         for col in required_cols:
-            if col not in df.columns:
-                df[col] = "-"
+            if col not in df.columns: df[col] = "-"
         return df.sort_values(by="id", ascending=False)
-    except Exception as e:
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
-# ฟังก์ชันจัดระเบียบตารางให้อ่านง่ายเป็นภาษาไทย
 def clean_display_table(df_input):
-    res_df = df_input[[
-        'id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 
-        'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status'
-    ]].copy()
-    res_df.columns = [
-        'ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 
-        'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน'
-    ]
+    res_df = df_input[['id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status']].copy()
+    res_df.columns = ['ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน']
     return res_df
 
 
@@ -162,18 +208,14 @@ if st.session_state.user_role == "creator":
             st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
-    # ✨ แก้ไขข้อ 1: ปรับตารางประวัติผู้บันทึกเป็นระบบ st.dataframe สวยงาม ไม่ติดกันเป็นพืด อ่านง่ายครบถ้วน
     st.write("---")
     st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
     df_raw = load_data()
     if not df_raw.empty:
         df_clean = clean_display_table(df_raw)
-        
         sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูลด่วนในตาราง (เลขหนังสือ / ชื่อผู้ยื่น)")
         if sq:
-            df_clean = df_clean[df_clean['เลขหนังสือ'].str.contains(sq, case=False, na=False) | 
-                                df_clean['ชื่อ-สกุลผู้ยื่น'].str.contains(sq, case=False, na=False)]
-        
+            df_clean = df_clean[df_clean['เลขหนังสือ'].str.contains(sq, case=False, na=False) | df_clean['ชื่อ-สกุลผู้ยื่น'].str.contains(sq, case=False, na=False)]
         st.dataframe(df_clean, use_container_width=True, hide_index=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
@@ -208,13 +250,10 @@ else:
             with st.form(key=f'modal_form_{doc_id}'):
                 final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
-                
-                # นำอินพุตวันที่กลับมาให้ผู้ตรวจบันทึกสิทธิ์ลงตารางชีต
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติเอกสาร *", datetime.now().date())
                 submit_modal = st.form_submit_button("💾 ยืนยันผลมติภาพรวม")
                 
             if submit_modal:
-                # ✨ แก้ไขข้อ 2: ผูกค่าตัวแปรวันที่ตรวจยิงกลับเข้าล็อกตำแหน่งแถวของ Google Sheet ให้ถูกต้องถาวร
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
                 df_existing.loc[df_existing['id'] == doc_id, 'check_status'] = final_status
                 df_existing.loc[df_existing['id'] == doc_id, 'inspected_date_text'] = str(inspected_date)
@@ -227,7 +266,6 @@ else:
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        # แดชบอร์ดสรุปด้านบน
         st.markdown("<h4 style='color:#800000;'>📊 แดชบอร์ดสรุปสถิติทะเบียนรวม</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
@@ -240,13 +278,11 @@ else:
         
         search_query = st.text_input("🔍 ค้นหาด่วนในคลังสารบรรณ (เลขหนังสือ / ชื่อผู้ยื่น)")
         if search_query:
-            df_filtered = df_all[df_all['doc_id_text'].str.contains(search_query, case=False, na=False) |
-                                 df_all['fullname'].str.contains(search_query, case=False, na=False)]
+            df_filtered = df_all[df_all['doc_id_text'].str.contains(search_query, case=False, na=False) | df_all['fullname'].str.contains(search_query, case=False, na=False)]
         else:
             df_filtered = df_all
 
-        # แสดงรายการข้อมูลตารางหลักแนวคิดสากลและสวยงาม
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก (วันที่)</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>สถานะรวม</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>สถานะรวม</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
@@ -258,7 +294,6 @@ else:
             c_type.write(f"{row['doc_type']}")
             c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
             
-            # แสดงข้อมูลชื่อผู้ตรวจ พร้อมคอลัมน์ "วันที่ตรวจ" ตามบรีฟแก้ไขข้อ 2
             date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
             c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
             
