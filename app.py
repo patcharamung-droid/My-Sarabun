@@ -4,7 +4,7 @@ from datetime import datetime
 import time as time_lib
 import pandas as pd
 
-# 1. จัดการฐานข้อมูล (อัปเดตเป็น v10 เพื่อเคลียร์ Schema เก่าที่พัง)
+# 1. จัดการฐานข้อมูล (ใช้งาน v10 ต่อเนื่องเพื่อไม่ให้ข้อมูลเก่าหาย)
 def init_db():
     conn = sqlite3.connect('document_management_v10.db')
     c = conn.cursor()
@@ -60,7 +60,7 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
     if 'visible_docs' not in st.session_state:
         st.session_state.visible_docs = 3
 
-    with st.form(key='creator_form_v10'):
+    with st.form(key='creator_form_v11'):
         st.subheader("1. ข้อมูลทั่วไปและวันที่บันทึก")
         col1, col2 = st.columns(2)
         with col1:
@@ -102,17 +102,13 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
         if not source_place or not doc_id_text or not fullname or not doc_type or not creator_name:
             st.error("❌ กรุณากรอกข้อมูลทั่วไปและชื่อผู้บันทึกให้ครบถ้วน")
         else:
-            # เอฟเฟกต์หมุนโหลด 3 วินาทีตามบรีฟ
             with st.spinner("⏳ กำลังบันทึกข้อมูลลงฐานข้อมูล กรุณารอสักครู่..."):
                 time_lib.sleep(3)
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # เชื่อมต่อ v10 
             conn = sqlite3.connect('document_management_v10.db')
             c = conn.cursor()
             
-            # ไล่เช็คจับคู่คอลัมน์กับเครื่องหมายคำถาม (มีทั้งหมด 20 ตัวแปร = 20 เครื่องหมายคำถามพอดีเป๊ะ)
             c.execute('''
                 INSERT INTO docs_pool (
                     source_place, doc_id_text, fullname, doc_type, creator_name, created_date_text,
@@ -155,7 +151,7 @@ else:
                 'inspector_name', 'inspected_date_text', 'check_status', 'timestamp']
         data = dict(zip(keys, doc_data))
         
-        st.markdown(f"**เลขหนังสือ:** {data['doc_id_text']} | **ชื่อผู้ยื่น:** {data['fullname']}")
+        st.markdown(f"**เลขหนังสือ:** {data['doc_id_text']} | **ชื่อผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทคำขอ:** {data['doc_type']}")
         st.markdown(f"**ผู้บันทึก:** {data['creator_name']} | **บันทึกเมื่อวันที่:** {data['created_date_text']}")
         st.write("---")
         
@@ -210,7 +206,7 @@ else:
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        st.subheader("📊 Dashboard สถานะการตรวจสอบภาพรวม")
+        st.subheader("📊 Dashboard Status การตรวจสอบภาพรวม")
         count_waiting = len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])
         count_approved = len(df_all[df_all['check_status'] == 'อนุมัติ'])
         count_rejected = len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])
@@ -235,36 +231,39 @@ else:
         else:
             df_filtered = df_all
 
-        h1, h2, h3, h4, h5, h6, h7 = st.columns([0.8, 1.8, 1.8, 1.8, 1.8, 2.5, 1.5])
+        # ปรับความกว้างคอลัมน์ใหม่เพื่อเอา "ประเภทคำขอ" แทรกเข้าไปอย่างสมดุล
+        h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
         h1.markdown("**ID**")
         h2.markdown("**เลขหนังสือ**")
         h3.markdown("**ชื่อ-สกุลผู้ยื่น**")
-        h4.markdown("**ผู้บันทึก (วันที่)**")
-        h5.markdown("**ผู้ตรวจรับรอง (วันที่)**")
-        h6.markdown("**สถานะปัจจุบัน**")
-        h7.markdown("**การจัดการ**")
+        h4.markdown("**ประเภทคำขอ**") # หัวข้อคอลัมน์ใหม่
+        h5.markdown("**ผู้บันทึก (วันที่)**")
+        h6.markdown("**ผู้ตรวจรับรอง (วันที่)**")
+        h7.markdown("**สถานะปัจจุบัน**")
+        h8.markdown("**การจัดการ**")
         st.markdown("<hr style='margin: 5px 0px 10px 0px; border-color: #ddd;' />", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
-            r1, r2, r3, r4, r5, r6, r7 = st.columns([0.8, 1.8, 1.8, 1.8, 1.8, 2.5, 1.5])
+            r1, r2, r3, r4, r5, r6, r7, r8 = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
             r1.write(f"{row['id']}")
             r2.write(f"{row['doc_id_text']}")
             r3.write(f"{row['fullname']}")
-            r4.write(f"{row['creator_name']} ({row['created_date_text']})")
+            r4.write(f"{row['doc_type']}") # ✨ เพิ่มการแสดงผลข้อมูลประเภทคำขอตรงนี้เรียบร้อยครับ!
+            r5.write(f"{row['creator_name']} ({row['created_date_text']})")
             
             if row['inspector_name'] == 'ยังไม่ได้ตรวจ':
-                r5.write("-")
+                r6.write("-")
             else:
-                r5.write(f"{row['inspector_name']} ({row['inspected_date_text']})")
+                r6.write(f"{row['inspector_name']} ({row['inspected_date_text']})")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
-                r6.markdown("⏳ <span style='color:orange;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+                r7.markdown("⏳ <span style='color:orange;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'อนุมัติ':
-                r6.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
+                r7.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'ไม่อนุมัติ':
-                r6.markdown("🔴 <span style='color:red; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
+                r7.markdown("🔴 <span style='color:red; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
             else:
-                r6.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+                r7.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
             
-            if r7.button("🔍 ตรวจเอกสาร", key=f"btn_{row['id']}"):
+            if r8.button("🔍 ตรวจเอกสาร", key=f"btn_{row['id']}"):
                 show_inspection_modal(row['id'])
