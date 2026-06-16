@@ -7,7 +7,7 @@ from streamlit_gsheets import GSheetsConnection
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
 
-# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำใหม่
+# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
 st.markdown("""
     <style>
         /* 1. ซ่อนเครื่องมือ Streamlit Toolbar ทั้งหมด */
@@ -51,7 +51,7 @@ st.markdown("""
             color: #ffffff !important; 
         }
 
-        /* 2. บังคับให้บล็อกลายน้ำใน Sidebar อยู่ติดขอบล่างสุดเสมอ (Fixed to Sidebar Bottom) */
+        /* 2. บังคับให้บล็อกลายน้ำใน Sidebar อยู่ติดขอบล่างสุดเสมอ */
         .sidebar-watermark {
             position: fixed;
             bottom: 20px;
@@ -142,6 +142,11 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
+def clean_display_table(df_input):
+    res_df = df_input[['id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status']].copy()
+    res_df.columns = ['ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน']
+    return res_df
+
 
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
@@ -201,7 +206,6 @@ if st.session_state.user_role == "creator":
             st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
-    # ✨ ปรับปรุงหัวตารางฝั่งผู้บันทึกให้สวยหรูสไตล์สีแดงเลือดหมูเหมือนฝั่งผู้ตรวจเรียบร้อยครับ
     st.write("---")
     st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
     df_raw = load_data()
@@ -212,21 +216,25 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        # หัวข้อตารางสีแดงเลือดหมูสุดหรูหราแบบเดียวกับฝั่งผู้ตรวจ
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
+        # ✨ ปรับหัวตารางฝั่งผู้บันทึก: แยกคอลัมน์ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ ออกจากกันชัดเจน
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_admin, c_status = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0])
+            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_status = st.columns([0.5, 1.2, 1.4, 1.4, 1.4, 1.1, 1.4, 1.1, 1.5])
             
             c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
+            
+            # แยกแสดงเดี่ยวๆ ไม่วงเล็บรวมกันแล้วครับ
+            c_user.write(f"{row['creator_name']}")
+            c_date1.write(f"{row['created_date_text']}")
             
             date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
+            c_date2.write(f"{date_ins}")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
@@ -253,7 +261,7 @@ else:
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
         st.markdown(f"<h5>📦 ตรวจรับรองทะเบียนเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
-        st.write(f"**ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} ({data['created_date_text']})")
+        st.write(f"**ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} | **วันที่บันทึก:** {data['created_date_text']}")
         st.write("---")
         
         col_detail, col_form = st.columns([1, 1])
@@ -302,20 +310,25 @@ else:
         else:
             df_filtered = df_all
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.8;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        # ✨ ปรับหัวตารางฝั่งผู้ตรวจ: แยกคอลัมน์ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ ออกจากกันเป็นระเบียบ
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_admin, c_status, c_act = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
+            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_status, c_act = st.columns([0.5, 1.2, 1.4, 1.4, 1.4, 1.1, 1.4, 1.1, 1.5, 1.0])
             
             c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
+            
+            # แยกแสดงคอลัมน์เดี่ยวๆ สวยงามตามบรีฟ
+            c_user.write(f"{row['creator_name']}")
+            c_date1.write(f"{row['created_date_text']}")
             
             date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
+            c_date2.write(f"{date_ins}")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
