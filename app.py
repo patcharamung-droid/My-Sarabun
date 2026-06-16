@@ -5,7 +5,7 @@ import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
-st.set_page_config(page_title="ระบบตรวจสอบรายการเอกสารคำขอใบอนุญาต", layout="wide")
+st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
 
 # ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
 st.markdown("""
@@ -73,16 +73,15 @@ def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
     except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
+        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
         st.stop()
 
 conn = get_gsheet_connection()
 
 # บัญชีผู้ใช้งานทดสอบ
 USERS = {
-    "Patchara.mu": {"password": "431799", "role": "creator", "name": "นายพัชระ มุงคุลคำซาว (เจ้าหน้าที่บันทึก)"},
-    "Teera.j": {"password": "431800", "role": "creator", "name": "นายธีระ จงสมชัย (เจ้าหน้าที่บันทึก)"},
-    "sonyod.r": {"password": "431522", "role": "inspector", "name": "นายทรงยศ รังษา (ผู้ตรวจสอบ)"}
+    "user1": {"password": "1234", "role": "creator", "name": "สมชาย ใจดี (เจ้าหน้าที่บันทึก)"},
+    "admin1": {"password": "1234", "role": "inspector", "name": "หัวหน้าสมศักดิ์ (ผู้ตรวจสอบ)"}
 }
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
@@ -91,13 +90,13 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจสอบรายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
             st.markdown("<h3 style='text-align: center;'>🔐 เข้าสู่ระบบ</h3>", unsafe_allow_html=True)
-            username_input = st.text_input("ชื่อผู้ใช้งาน", placeholder="กรุณาระบุชื่อผู้ใช้งาน")
-            password_input = st.text_input("รหัสผ่าน", type="password", placeholder="••••••")
+            username_input = st.text_input("ชื่อผู้ใช้งาน", placeholder="user1 หรือ admin1")
+            password_input = st.text_input("รหัสผ่าน", type="password", placeholder="••••")
             login_btn = st.form_submit_button("🔓 ล็อกอิน")
             
         if login_btn:
@@ -112,7 +111,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
-st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต สำนักงาน กสทช. ภาค 2</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ สารบรรณ</h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
@@ -129,7 +128,7 @@ status_options = ["ผ่าน", "ไม่ผ่าน"]
 def render_doc_row(label):
     c_status, c_note = st.columns([1, 2])
     with c_status: status = st.radio(label, status_options, index=0, horizontal=True, key=f"status_{label}")
-    with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด ", key=f"note_{label}")
+    with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด (ถ้ามี)", key=f"note_{label}")
     return status, note
 
 def load_data():
@@ -137,7 +136,8 @@ def load_data():
         df = conn.read(ttl="0d")
         if df.empty: return pd.DataFrame()
         df = df.dropna(subset=['doc_id_text'])
-        required_cols = ['inspector_name', 'inspected_date_text', 'check_status']
+        # ค้ำประกันเผื่อคอลัมน์ใหม่ที่ยังไม่มีข้อมูลในแถวเก่าๆ
+        required_cols = ['inspector_name', 'inspected_date_text', 'check_status', 'inspector_comment']
         for col in required_cols:
             if col not in df.columns: df[col] = "-"
         return df.sort_values(by="id", ascending=False)
@@ -148,9 +148,8 @@ def load_data():
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
-    st.subheader("📝 ฟอร์มตรวจสอบรายการเอกสารและบันทึกข้อมูลเบื้องต้น")
+    st.subheader("📝 ฟอร์มลงทะเบียนเอกสารและตรวจสอบเบื้องต้น")
     
-    # กำหนดจำนวนช่องเอกสารเริ่มต้น (Default เริ่มที่ 3 ช่อง)
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
 
@@ -158,17 +157,16 @@ if st.session_state.user_role == "creator":
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.selectbox("แหล่งที่มา *", ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"])
-            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="กรุณาระบุ")
-            creator_name = st.text_input("ผู้บันทึก/ตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
+            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
+            creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
-            doc_type = st.text_input("ประเภทคำขอ *", placeholder="คำขอ...")
+            doc_type = st.text_input("ประเภทคำขอ *", placeholder="เช่น ขออนุมัติโครงการ")
             created_date = st.date_input("วันที่บันทึก *", datetime.now().date())
             
         st.write("---")
         st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง)</h4>", unsafe_allow_html=True)
         
-        # วนลูปสร้างช่องตรวจเอกสารแบบ Dynamic ตามจำนวนใน session_state
         doc_data_inputs = {}
         for i in range(1, 7):
             if i <= st.session_state.visible_docs:
@@ -176,29 +174,25 @@ if st.session_state.user_role == "creator":
                 doc_data_inputs[f"doc{i}_status"] = status
                 doc_data_inputs[f"doc{i}_note"] = note
             else:
-                # ช่องที่ถูกซ่อน/ลบออก ให้เซ็ตค่าเป็น ไม่ได้ระบุ อัตโนมัติ เพื่อส่งลงฐานข้อมูล
                 doc_data_inputs[f"doc{i}_status"] = "ไม่ได้ระบุ"
                 doc_data_inputs[f"doc{i}_note"] = ""
             
         st.write("---")
-        submit_button = st.form_submit_button(label='💾 บันทึกข้อมูล')
+        submit_button = st.form_submit_button(label='💾 บันทึกส่งเข้า Google Sheet ถาวร')
 
-    # ✨ ปุ่มควบคุมการ เพิ่ม และ ลบ ช่องเอกสาร (อยู่นอกกรอบฟอร์มเพื่อแก้ไขค่าได้ทันที)
     c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
     with c_btn1:
         if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 6:
-            st.session_state.visible_docs += 1
-            st.rerun()
+            st.session_state.visible_docs += 1; st.rerun()
     with c_btn2:
         if st.button("➖ ลบช่องเอกสารล่าสุด") and st.session_state.visible_docs > 1:
-            st.session_state.visible_docs -= 1
-            st.rerun()
+            st.session_state.visible_docs -= 1; st.rerun()
 
     if submit_button:
         if not doc_id_text or not fullname or not doc_type:
             st.error("❌ กรุณากรอกข้อมูลด่านหลักให้ครบถ้วน")
         else:
-            with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูล..."):
+            with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูลเข้า Google Sheet..."):
                 time_lib.sleep(3)
             
             df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
@@ -207,21 +201,21 @@ if st.session_state.user_role == "creator":
             new_row_data = {
                 "id": next_id, "source_place": source_place, "doc_id_text": doc_id_text, "fullname": fullname, "doc_type": doc_type,
                 "creator_name": creator_name, "created_date_text": str(created_date),
-                "inspector_name": "ยังไม่ได้ตรวจ", "inspected_date_text": "-", "check_status": "รอตรวจเอกสาร"
+                "inspector_name": "ยังไม่ได้ตรวจ", "inspected_date_text": "-", "check_status": "รอตรวจเอกสาร",
+                "inspector_comment": "-" # เพิ่มฟิลด์สแตนด์บายความคิดเห็นว่างไว้ก่อนตรวจ
             }
-            # รวมข้อมูลผลตรวจเอกสาร 1-6 เข้าไปด้วยกัน
             new_row_data.update(doc_data_inputs)
             
             new_row = pd.DataFrame([new_row_data])
             updated_df = pd.concat([df_existing, new_row], ignore_index=True)
             conn.update(data=updated_df)
             
-            st.session_state.visible_docs = 3  # รีเซ็ตจำนวนช่องกลับไปที่ 3 สำหรับใบงานถัดไป
-            st.success("🎉 บันทึกข้อมูล!")
+            st.session_state.visible_docs = 3  
+            st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
     st.write("---")
-    st.markdown("<h3 style='color:#800000;'>📋 รายการเอกสารคำขอ</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
     df_raw = load_data()
     if not df_raw.empty:
         sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูลด่วนในตาราง (เลขหนังสือ / ชื่อผู้ยื่น)")
@@ -230,11 +224,12 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
+        # ✨ ปรับโครงสร้างคอลัมน์ฝั่งผู้บันทึก: เพิ่ม ความคิดเห็นผู้ตรวจ เข้าตารางหลักด้วย
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_status = st.columns([0.5, 1.2, 1.4, 1.4, 1.4, 1.1, 1.4, 1.1, 1.5])
+            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns([0.5, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3])
             
             c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
@@ -247,14 +242,18 @@ if st.session_state.user_role == "creator":
             c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
             c_date2.write(f"{date_ins}")
             
+            # พ่นการแสดงความคิดเห็นลงหน้าจอ
+            comment_val = row['inspector_comment'] if pd.notna(row['inspector_comment']) else "-"
+            c_comment.write(f"{comment_val}")
+            
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
+            elif row['check_status'] == 'อนุมัติ':
                 c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
+            elif row['check_status'] == 'ไม่อนุมัติ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
@@ -264,9 +263,9 @@ if st.session_state.user_role == "creator":
 # 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
 # ==========================================
 else:
-    st.subheader("🔍 การพิจารณาตรวจสอบอนุมัติพิมพ์ใบอนุญาต")
+    st.subheader("🔍 ศูนย์ควบคุมการพิจารณาตรวจสอบสิทธิ์ผู้ตรวจอนุมัติ")
     
-    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสาร", width="large")
+    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสารกลาง", width="large")
     def show_inspection_modal(doc_id):
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
@@ -285,7 +284,7 @@ else:
                     note_val = data[note_key] if pd.notna(data[note_key]) else "-"
                     st.write(f"{'✅' if data[status_key]=='ผ่าน' else '❌'} เอกสาร {i}: **{data[status_key]}** (หมายเหตุ: {note_val})")
                     
-            with col_form:
+        with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
                 final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
@@ -312,45 +311,52 @@ else:
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        st.markdown("<h4 style='color:#800000;'>📊สรุปสถิติ</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color:#800000;'>📊 แดชบอร์ดสรุปสถิติทะเบียนรวม</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
-        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติพิมพ์ใบอนุญาตแล้ว</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
-        m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติคำขอ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
-        m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิกคำขอ</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิก'])}</h2></div>", unsafe_allow_html=True)
+        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติแล้ว</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิก</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิก'])}</h2></div>", unsafe_allow_html=True)
         
         st.write("---")
-        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารคำขออนุญาต</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
         
-        search_query = st.text_input("🔍 ค้นหาข้อมูลด่วน (เลขหนังสือ / ชื่อผู้ยื่น)")
+        search_query = st.text_input("🔍 ค้นหาด่วนในคลังสารบรรณ (เลขหนังสือ / ชื่อผู้ยื่น)")
         if search_query:
             df_filtered = df_all[df_all['doc_id_text'].str.contains(search_query, case=False, na=False) | df_all['fullname'].str.contains(search_query, case=False, na=False)]
         else:
             df_filtered = df_all
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        # ✨ ปรับโครงสร้างคอลัมน์ฝั่งผู้ตรวจ: เพิ่ม ความคิดเห็นผู้ตรวจ เข้าตารางหลักด้วย
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_admin, c_status, c_act = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
+            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns([0.5, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3, 1.0])
             
             c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
+            c_user.write(f"{row['creator_name']}")
+            c_date1.write(f"{row['created_date_text']}")
             
             date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
+            c_date2.write(f"{date_ins}")
+            
+            # พ่นการแสดงความคิดเห็นลงหน้าจอของฝั่งผู้ตรวจ
+            comment_val = row['inspector_comment'] if pd.notna(row['inspector_comment']) else "-"
+            c_comment.write(f"{comment_val}")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
+            elif row['check_status'] == 'อนุมัติ':
                 c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
+            elif row['check_status'] == 'ไม่อนุมัติ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
             
             if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                 show_inspection_modal(int(row['id']))
