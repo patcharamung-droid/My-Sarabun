@@ -4,7 +4,7 @@ from datetime import datetime
 import time as time_lib
 import pandas as pd
 
-# 1. จัดการฐานข้อมูล (ใช้งาน v10 ต่อเนื่องเพื่อไม่ให้ข้อมูลเก่าหาย)
+# 1. จัดการฐานข้อมูล
 def init_db():
     conn = sqlite3.connect('document_management_v10.db')
     c = conn.cursor()
@@ -34,12 +34,68 @@ def init_db():
 
 init_db()
 
+# --- ระบบจำลองฐานข้อมูลบัญชีผู้ใช้งาน (User Credentials) ---
+# บัญชีสำหรับทดสอบระบบ
+USERS = {
+    "user1": {"password": "1234", "role": "creator", "name": "สมชาย ใจดี (เจ้าหน้าที่บันทึก)"},
+    "admin1": {"password": "1234", "role": "inspector", "name": "หัวหน้าสมศักดิ์ (ผู้ตรวจสอบ)"}
+}
+
+# ใช้ session_state ของ Streamlit ในการจำสถานะว่าล็อกอินหรือยัง
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user_role" not in st.session_state:
+    st.session_state.user_role = None
+if "user_fullname" not in st.session_state:
+    st.session_state.user_fullname = None
+
+# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="ระบบงานสารบรรณ", layout="wide")
+
+
+# ==========================================
+# 🔒 ส่วนของ: หน้ากากและฟอร์มล็อกอิน
+# ==========================================
+if not st.session_state.logged_in:
+    st.markdown("<h2 style='text-align: center;'>🔐 เข้าสู่ระบบสารบรรณและตรวจเช็คเอกสาร</h2>", unsafe_allow_html=True)
+    
+    col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
+    with col_l2:
+        with st.form(key='login_form'):
+            username_input = st.text_input("ชื่อผู้ใช้งาน (Username)", placeholder="เช่น user1 หรือ admin1")
+            password_input = st.text_input("รหัสผ่าน (Password)", type="password", placeholder="••••")
+            login_btn = st.form_submit_button("🔓 เข้าสู่ระบบ")
+            
+        if login_btn:
+            if username_input in USERS and USERS[username_input]["password"] == password_input:
+                st.session_state.logged_in = True
+                st.session_state.user_role = USERS[username_input]["role"]
+                st.session_state.user_fullname = USERS[username_input]["name"]
+                st.success("🎉 เข้าสู่ระบบสำเร็จ กำลังนำคุณไปยังหน้างาน...")
+                time_lib.sleep(1)
+                st.rerun()
+            else:
+                st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
+                
+        st.info("💡 บัญชีสำหรับทดสอบ:\n- ผู้บันทึก: user1 / 1234\n- ผู้ตรวจ: admin1 / 1234")
+    st.stop() # หยุดการทำงานของโค้ดด้านล่างไว้ตรงนี้จนกว่าจะล็อกอินผ่าน
+
+
+# ==========================================
+# 🚪 เมื่อล็อกอินผ่านแล้ว แสดงแถบควบคุมด้านข้าง (Sidebar)
+# ==========================================
+st.sidebar.title("👤 ข้อมูลผู้ใช้งาน")
+st.sidebar.write(f"**ชื่อ:** {st.session_state.user_fullname}")
+st.sidebar.write(f"**สิทธิ์:** {'📝 ผู้บันทึกข้อมูล' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจสอบเอกสาร'}")
+
+# ปุ่มออกจากระบบ
+if st.sidebar.button("🚪 ออกจากระบบ"):
+    st.session_state.logged_in = False
+    st.session_state.user_role = None
+    st.session_state.user_fullname = None
+    st.rerun()
+
 st.title("📑 ระบบบันทึกและตรวจสอบเอกสารสารบรรณ")
-
-st.sidebar.title("🔐 สิทธิ์การใช้งานระบบ")
-user_role = st.sidebar.radio("เลือกสถานะของคุณ:", ["📝 ผู้บันทึกข้อมูล", "🔍 ผู้ตรวจสอบเอกสาร"])
-
 status_options = ["ผ่าน", "ไม่ผ่าน"]
 
 def render_doc_row(label):
@@ -52,21 +108,22 @@ def render_doc_row(label):
 
 
 # ==========================================
-# 🟢 ส่วนของ: 📝 ผู้บันทึกข้อมูล
+# 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
-if user_role == "📝 ผู้บันทึกข้อมูล":
-    st.header("✍️ *ฝั่งผู้บันทึกข้อมูล*")
+if st.session_state.user_role == "creator":
+    st.header("✍️ เมนูสำหรับเจ้าหน้าที่บันทึกข้อมูล")
     
     if 'visible_docs' not in st.session_state:
         st.session_state.visible_docs = 3
 
-    with st.form(key='creator_form_v11'):
+    with st.form(key='creator_form_v12'):
         st.subheader("1. ข้อมูลทั่วไปและวันที่บันทึก")
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.text_input("แหล่งที่มา *", placeholder="เช่น กองการเจ้าหน้าที่, หน่วยงานภายนอก")
             doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
-            creator_name = st.text_input("ชื่อผู้บันทึกข้อมูล *", placeholder="ระบุชื่อเจ้าหน้าที่ผู้บันทึก")
+            # ดึงชื่อคนที่ล็อกอินมาใส่ในช่องชื่อผู้บันทึกให้โดยอัตโนมัติ ล็อกไม่ให้แก้เพื่อความโปร่งใส
+            creator_name = st.text_input("ชื่อผู้บันทึกข้อมูล", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
             doc_type = st.text_input("ประเภทคำขอ *", placeholder="เช่น ขออนุมัติโครงการ, ขอย้ายตำแหน่ง")
@@ -99,8 +156,8 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
             st.rerun()
 
     if submit_button:
-        if not source_place or not doc_id_text or not fullname or not doc_type or not creator_name:
-            st.error("❌ กรุณากรอกข้อมูลทั่วไปและชื่อผู้บันทึกให้ครบถ้วน")
+        if not source_place or not doc_id_text or not fullname or not doc_type:
+            st.error("❌ กรุณากรอกข้อมูลทั่วไปในช่องที่มีเครื่องหมาย * ให้ครบถ้วน")
         else:
             with st.spinner("⏳ กำลังบันทึกข้อมูลลงฐานข้อมูล กรุณารอสักครู่..."):
                 time_lib.sleep(3)
@@ -126,15 +183,15 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
             conn.close()
             
             st.session_state.visible_docs = 3
-            st.success(f"🎉 บันทึกข้อมูลและส่งต่อเรียบร้อยแล้ว!")
+            st.success(f"🎉 บันทึกข้อมูลเรียบร้อยแล้ว!")
             st.rerun()
 
 
 # ==========================================
-# 🔵 ส่วนของ: 🔍 ผู้ตรวจสอบเอกสาร
+# 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
 # ==========================================
 else:
-    st.header("🔍 *ฝั่งผู้ตรวจสอบเอกสารและลงนาม*")
+    st.header("🔍 เมนูสำหรับผู้ตรวจสอบและลงนามอนุมัติ")
     
     @st.dialog("🖊️ ฟอร์มลงชื่อตรวจรับรองเอกสาร", width="large")
     def show_inspection_modal(doc_id):
@@ -156,7 +213,6 @@ else:
         st.write("---")
         
         col_detail, col_form = st.columns([1, 1])
-        
         with col_detail:
             st.markdown("**📋 ผลการตรวจเช็คไฟล์แนบจากผู้บันทึก:**")
             for i in range(1, 7):
@@ -177,28 +233,26 @@ else:
                     def_index = 0
                     
                 final_status = st.selectbox("ผลการพิจารณาภาพรวม *", status_list, index=def_index)
-                inspector_input = st.text_input("ลงชื่อผู้ตรวจเอกสาร (ชื่อ-นามสกุล) *", value="" if data['inspector_name'] == "ยังไม่ได้ตรวจ" else data['inspector_name'])
+                # ดึงชื่อผู้ตรวจที่ล็อกอินมาใส่ให้โดยอัตโนมัติ ล็อกช่องไว้เพื่อป้องกันการลงชื่อสวมรอย
+                inspector_input = st.text_input("ลงชื่อผู้ตรวจเอกสาร", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่พิจารณา/ตรวจรับรอง *", datetime.now().date())
                 
                 submit_modal = st.form_submit_button("💾 บันทึกผลตรวจ")
                 
             if submit_modal:
-                if not inspector_input:
-                    st.error("❌ กรุณากรอกชื่อผู้ตรวจเอกสารด้วยครับ")
-                else:
-                    conn = sqlite3.connect('document_management_v10.db')
-                    c = conn.cursor()
-                    c.execute('''
-                        UPDATE docs_pool 
-                        SET inspector_name=?, check_status=?, inspected_date_text=?
-                        WHERE id=?
-                    ''', (inspector_input, final_status, str(inspected_date), doc_id))
-                    conn.commit()
-                    conn.close()
-                    st.success("อัปเดตสถานะสำเร็จ!")
-                    st.rerun()
+                conn = sqlite3.connect('document_management_v10.db')
+                c = conn.cursor()
+                c.execute('''
+                    UPDATE docs_pool 
+                    SET inspector_name=?, check_status=?, inspected_date_text=?
+                    WHERE id=?
+                ''', (inspector_input, final_status, str(inspected_date), doc_id))
+                conn.commit()
+                conn.close()
+                st.success("อัปเดตสถานะและลงชื่อผู้ตรวจสำเร็จ!")
+                st.rerun()
 
-    # ดึงข้อมูลจากฐานข้อมูล v10
+    # ดึงข้อมูลมาแสดงในหน้าแรกของผู้ตรวจ
     conn = sqlite3.connect('document_management_v10.db')
     df_all = pd.read_sql_query("SELECT * FROM docs_pool ORDER BY id DESC", conn)
     conn.close()
@@ -206,6 +260,7 @@ else:
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
+        # Dashboard สรุปสถานะภาพรวม
         st.subheader("📊 Dashboard Status การตรวจสอบภาพรวม")
         count_waiting = len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])
         count_approved = len(df_all[df_all['check_status'] == 'อนุมัติ'])
@@ -231,12 +286,12 @@ else:
         else:
             df_filtered = df_all
 
-        # ปรับความกว้างคอลัมน์ใหม่เพื่อเอา "ประเภทคำขอ" แทรกเข้าไปอย่างสมดุล
+        # แสดงตารางรายการหลัก
         h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
         h1.markdown("**ID**")
         h2.markdown("**เลขหนังสือ**")
         h3.markdown("**ชื่อ-สกุลผู้ยื่น**")
-        h4.markdown("**ประเภทคำขอ**") # หัวข้อคอลัมน์ใหม่
+        h4.markdown("**ประเภทคำขอ**")
         h5.markdown("**ผู้บันทึก (วันที่)**")
         h6.markdown("**ผู้ตรวจรับรอง (วันที่)**")
         h7.markdown("**สถานะปัจจุบัน**")
@@ -248,7 +303,7 @@ else:
             r1.write(f"{row['id']}")
             r2.write(f"{row['doc_id_text']}")
             r3.write(f"{row['fullname']}")
-            r4.write(f"{row['doc_type']}") # ✨ เพิ่มการแสดงผลข้อมูลประเภทคำขอตรงนี้เรียบร้อยครับ!
+            r4.write(f"{row['doc_type']}")
             r5.write(f"{row['creator_name']} ({row['created_date_text']})")
             
             if row['inspector_name'] == 'ยังไม่ได้ตรวจ':
