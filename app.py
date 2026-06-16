@@ -133,7 +133,7 @@ def render_doc_row(label):
 
 def load_data():
     try:
-        df = conn.read(ttl=0)
+        df = conn.read(ttl="0d")
         if df.empty: return pd.DataFrame()
         df = df.dropna(subset=['doc_id_text'])
         required_cols = ['inspector_name', 'inspected_date_text', 'check_status']
@@ -141,11 +141,6 @@ def load_data():
             if col not in df.columns: df[col] = "-"
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
-
-def clean_display_table(df_input):
-    res_df = df_input[['id', 'doc_id_text', 'fullname', 'doc_type', 'creator_name', 'created_date_text', 'inspector_name', 'inspected_date_text', 'check_status']].copy()
-    res_df.columns = ['ID', 'เลขหนังสือ', 'ชื่อ-สกุลผู้ยื่น', 'ประเภทคำขอ', 'ผู้บันทึก', 'วันที่บันทึก', 'ผู้ตรวจรับรอง', 'วันที่ตรวจเอกสาร', 'สถานะปัจจุบัน']
-    return res_df
 
 
 # ==========================================
@@ -158,12 +153,16 @@ if st.session_state.user_role == "creator":
     with st.form(key='creator_form_sheet'):
         col1, col2 = st.columns(2)
         with col1:
-            source_place = st.text_input("แหล่งที่มา *")
-            doc_id_text = st.text_input("เลขหนังสือ *")
+            # ✨ ปรับเป็น Dropdown สำเร็จรูปตามที่ขอเรียบร้อยครับ
+            source_place = st.selectbox(
+                "แหล่งที่มา *", 
+                ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"]
+            )
+            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
             creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
         with col2:
-            fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *")
-            doc_type = st.text_input("ประเภทคำขอ *")
+            fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
+            doc_type = st.text_input("ประเภทคำขอ *", placeholder="เช่น ขออนุมัติโครงการ")
             created_date = st.date_input("วันที่บันทึก *", datetime.now().date())
             
         st.write("---")
@@ -182,13 +181,13 @@ if st.session_state.user_role == "creator":
         st.session_state.visible_docs += 1; st.rerun()
 
     if submit_button:
-        if not source_place or not doc_id_text or not fullname or not doc_type:
+        if not doc_id_text or not fullname or not doc_type:
             st.error("❌ กรุณากรอกข้อมูลด่านหลักให้ครบถ้วน")
         else:
             with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูลเข้า Google Sheet..."):
                 time_lib.sleep(3)
             
-            df_existing = conn.read(ttl=0).dropna(subset=['doc_id_text'])
+            df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
             next_id = 1 if df_existing.empty else int(df_existing['id'].max()) + 1
             
             new_row = pd.DataFrame([{
@@ -216,7 +215,6 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        # ✨ ปรับหัวตารางฝั่งผู้บันทึก: แยกคอลัมน์ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ ออกจากกันชัดเจน
         st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
@@ -227,8 +225,6 @@ if st.session_state.user_role == "creator":
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            
-            # แยกแสดงเดี่ยวๆ ไม่วงเล็บรวมกันแล้วครับ
             c_user.write(f"{row['creator_name']}")
             c_date1.write(f"{row['created_date_text']}")
             
@@ -257,7 +253,7 @@ else:
     
     @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสารกลาง", width="large")
     def show_inspection_modal(doc_id):
-        df_existing = conn.read(ttl=0).dropna(subset=['doc_id_text'])
+        df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
         st.markdown(f"<h5>📦 ตรวจรับรองทะเบียนเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
@@ -310,7 +306,6 @@ else:
         else:
             df_filtered = df_all
 
-        # ✨ ปรับหัวตารางฝั่งผู้ตรวจ: แยกคอลัมน์ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ ออกจากกันเป็นระเบียบ
         st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
@@ -321,8 +316,6 @@ else:
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            
-            # แยกแสดงคอลัมน์เดี่ยวๆ สวยงามตามบรีฟ
             c_user.write(f"{row['creator_name']}")
             c_date1.write(f"{row['created_date_text']}")
             
