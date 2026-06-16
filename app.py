@@ -148,16 +148,15 @@ def load_data():
 # ==========================================
 if st.session_state.user_role == "creator":
     st.subheader("📝 ฟอร์มลงทะเบียนเอกสารและตรวจสอบเบื้องต้น")
-    if 'visible_docs' not in st.session_state: st.session_state.visible_docs = 3
+    
+    # กำหนดจำนวนช่องเอกสารเริ่มต้น (Default เริ่มที่ 3 ช่อง)
+    if 'visible_docs' not in st.session_state: 
+        st.session_state.visible_docs = 3
 
     with st.form(key='creator_form_sheet'):
         col1, col2 = st.columns(2)
         with col1:
-            # ✨ ปรับเป็น Dropdown สำเร็จรูปตามที่ขอเรียบร้อยครับ
-            source_place = st.selectbox(
-                "แหล่งที่มา *", 
-                ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"]
-            )
+            source_place = st.selectbox("แหล่งที่มา *", ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"])
             doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
             creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
         with col2:
@@ -166,19 +165,33 @@ if st.session_state.user_role == "creator":
             created_date = st.date_input("วันที่บันทึก *", datetime.now().date())
             
         st.write("---")
-        doc1_status, doc1_note = render_doc_row("📄 เอกสาร 1")
-        doc2_status, doc2_note = render_doc_row("📄 เอกสาร 2")
-        doc3_status, doc3_note = render_doc_row("📄 เอกสาร 3")
+        st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง)</h4>", unsafe_allow_html=True)
         
-        doc4_status, doc4_note = "ไม่ได้ระบุ", ""; doc5_status, doc5_note = "ไม่ได้ระบุ", ""; doc6_status, doc6_note = "ไม่ได้ระบุ", ""
-        if st.session_state.visible_docs >= 4: doc4_status, doc4_note = render_doc_row("📄 เอกสาร 4")
-        if st.session_state.visible_docs >= 5: doc5_status, doc5_note = render_doc_row("📄 เอกสาร 5")
-        if st.session_state.visible_docs == 6: doc6_status, doc6_note = render_doc_row("📄 เอกสาร 6")
+        # วนลูปสร้างช่องตรวจเอกสารแบบ Dynamic ตามจำนวนใน session_state
+        doc_data_inputs = {}
+        for i in range(1, 7):
+            if i <= st.session_state.visible_docs:
+                status, note = render_doc_row(f"📄 เอกสาร {i}")
+                doc_data_inputs[f"doc{i}_status"] = status
+                doc_data_inputs[f"doc{i}_note"] = note
+            else:
+                # ช่องที่ถูกซ่อน/ลบออก ให้เซ็ตค่าเป็น ไม่ได้ระบุ อัตโนมัติ เพื่อส่งลงฐานข้อมูล
+                doc_data_inputs[f"doc{i}_status"] = "ไม่ได้ระบุ"
+                doc_data_inputs[f"doc{i}_note"] = ""
             
+        st.write("---")
         submit_button = st.form_submit_button(label='💾 บันทึกส่งเข้า Google Sheet ถาวร')
 
-    if st.session_state.visible_docs < 6 and st.button("➕ เพิ่มช่องตรวจเอกสารลำดับถัดไป"):
-        st.session_state.visible_docs += 1; st.rerun()
+    # ✨ ปุ่มควบคุมการ เพิ่ม และ ลบ ช่องเอกสาร (อยู่นอกกรอบฟอร์มเพื่อแก้ไขค่าได้ทันที)
+    c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
+    with c_btn1:
+        if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 6:
+            st.session_state.visible_docs += 1
+            st.rerun()
+    with c_btn2:
+        if st.button("➖ ลบช่องเอกสารล่าสุด") and st.session_state.visible_docs > 1:
+            st.session_state.visible_docs -= 1
+            st.rerun()
 
     if submit_button:
         if not doc_id_text or not fullname or not doc_type:
@@ -190,18 +203,19 @@ if st.session_state.user_role == "creator":
             df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
             next_id = 1 if df_existing.empty else int(df_existing['id'].max()) + 1
             
-            new_row = pd.DataFrame([{
+            new_row_data = {
                 "id": next_id, "source_place": source_place, "doc_id_text": doc_id_text, "fullname": fullname, "doc_type": doc_type,
                 "creator_name": creator_name, "created_date_text": str(created_date),
-                "doc1_status": doc1_status, "doc1_note": doc1_note, "doc2_status": doc2_status, "doc2_note": doc2_note,
-                "doc3_status": doc3_status, "doc3_note": doc3_note, "doc4_status": doc4_status, "doc4_note": doc4_note,
-                "doc5_status": doc5_note, "doc5_note": doc5_note, "doc6_status": doc6_status, "doc6_note": doc6_note,
                 "inspector_name": "ยังไม่ได้ตรวจ", "inspected_date_text": "-", "check_status": "รอตรวจเอกสาร"
-            }])
+            }
+            # รวมข้อมูลผลตรวจเอกสาร 1-6 เข้าไปด้วยกัน
+            new_row_data.update(doc_data_inputs)
             
+            new_row = pd.DataFrame([new_row_data])
             updated_df = pd.concat([df_existing, new_row], ignore_index=True)
             conn.update(data=updated_df)
-            st.session_state.visible_docs = 3
+            
+            st.session_state.visible_docs = 3  # รีเซ็ตจำนวนช่องกลับไปที่ 3 สำหรับใบงานถัดไป
             st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
             st.rerun()
 
@@ -306,22 +320,20 @@ else:
         else:
             df_filtered = df_all
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>เลขหนังสือ</div><div style='flex:1.4;'>ชื่อผู้ยื่น</div><div style='flex:1.4;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.1;'>วันที่บันทึก</div><div style='flex:1.4;'>ผู้ตรวจรับรอง</div><div style='flex:1.1;'>วันที่ตรวจ</div><div style='flex:1.5;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.6;'>ID</div><div style='flex:1.4;'>เลขหนังสือ</div><div style='flex:1.6;'>ชื่อผู้ยื่น</div><div style='flex:1.6;'>ประเภทงาน</div><div style='flex:1.4;'>ผู้บันทึก</div><div style='flex:1.8;'>ผู้ตรวจ (วันที่ตรวจ)</div><div style='flex:2.0;'>Ref สถานะ</div><div style='flex:1.2;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_status, c_act = st.columns([0.5, 1.2, 1.4, 1.4, 1.4, 1.1, 1.4, 1.1, 1.5, 1.0])
+            c_id, c_no, c_name, c_type, c_user, c_admin, c_status, c_act = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
             
             c_id.write(f"{int(row['id'])}")
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']}")
-            c_date1.write(f"{row['created_date_text']}")
+            c_user.write(f"{row['creator_name']} ({row['created_date_text']})")
             
             date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
-            c_date2.write(f"{date_ins}")
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({date_ins})")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
