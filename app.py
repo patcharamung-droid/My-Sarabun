@@ -285,20 +285,27 @@ else:
                     note_val = data[note_key] if pd.notna(data[note_key]) else "-"
                     st.write(f"{'✅' if data[status_key]=='ผ่าน' else '❌'} เอกสาร {i}: **{data[status_key]}** (หมายเหตุ: {note_val})")
                     
-        with col_form:
+            with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
+                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติเอกสาร *", datetime.now().date())
-                submit_modal = st.form_submit_button("💾 ยืนยันบันทึก")
+                
+                # ✨ เพิ่มช่องให้กรอกความคิดเห็นผู้ตรวจในฟอร์มป๊อปอัปตามบรีฟเป๊ะครับ
+                exist_comment = data['inspector_comment'] if ('inspector_comment' in data and pd.notna(data['inspector_comment']) and data['inspector_comment'] != "-") else ""
+                inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ / หมายเหตุเพิ่มเติม", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม (ถ้ามี)")
+                
+                submit_modal = st.form_submit_button("💾 ยืนยันผลมติภาพรวม")
                 
             if submit_modal:
+                # อัปเดตข้อมูลและบันทึกข้อความความคิดเห็นลงตำแหน่งแถวเดิมใน Google Sheet
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
                 df_existing.loc[df_existing['id'] == doc_id, 'check_status'] = final_status
                 df_existing.loc[df_existing['id'] == doc_id, 'inspected_date_text'] = str(inspected_date)
+                df_existing.loc[df_existing['id'] == doc_id, 'inspector_comment'] = inspector_comment_input if inspector_comment_input else "-"
                 
                 conn.update(data=df_existing)
-                st.success("🎉 บันทึกผลตรวจและวันที่รับรองสำเร็จ!")
+                st.success("🎉 บันทึกผลตรวจและเพิ่มความคิดเห็นลง Google Sheet สำเร็จ!")
                 st.rerun()
 
     df_all = load_data()
