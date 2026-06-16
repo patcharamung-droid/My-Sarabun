@@ -1,10 +1,10 @@
 import streamlit as st
 import sqlite3
 from datetime import datetime
-import time as time_lib  # เปลี่ยนชื่อเพื่อไม่ให้ซ้ำกับตัวแปรอื่น
+import time as time_lib
 import pandas as pd
 
-# 1. จัดการฐานข้อมูล (เอาฟิลด์เวลาออก เหลือเฉพาะวันที่)
+# 1. จัดการฐานข้อมูล (อัปเดตเป็น v10 เพื่อเคลียร์ Schema เก่าที่พัง)
 def init_db():
     conn = sqlite3.connect('document_management_v10.db')
     c = conn.cursor()
@@ -16,7 +16,7 @@ def init_db():
             fullname TEXT,
             doc_type TEXT,
             creator_name TEXT,
-            created_date_text TEXT,     -- เก็บคงเหลือเฉพาะวันที่บันทึก
+            created_date_text TEXT,
             doc1_status TEXT, doc1_note TEXT,
             doc2_status TEXT, doc2_note TEXT,
             doc3_status TEXT, doc3_note TEXT,
@@ -24,7 +24,7 @@ def init_db():
             doc5_status TEXT, doc5_note TEXT,
             doc6_status TEXT, doc6_note TEXT,
             inspector_name TEXT DEFAULT 'ยังไม่ได้ตรวจ',
-            inspected_date_text TEXT DEFAULT '-',   -- เก็บคงเหลือเฉพาะวันที่ตรวจ
+            inspected_date_text TEXT DEFAULT '-',
             check_status TEXT DEFAULT 'รอตรวจเอกสาร',
             timestamp TEXT
         )
@@ -37,13 +37,11 @@ init_db()
 st.set_page_config(page_title="ระบบงานสารบรรณ", layout="wide")
 st.title("📑 ระบบบันทึกและตรวจสอบเอกสารสารบรรณ")
 
-# แถบ sidebar สำหรับสลับหน้าผู้ใช้งาน
 st.sidebar.title("🔐 สิทธิ์การใช้งานระบบ")
 user_role = st.sidebar.radio("เลือกสถานะของคุณ:", ["📝 ผู้บันทึกข้อมูล", "🔍 ผู้ตรวจสอบเอกสาร"])
 
 status_options = ["ผ่าน", "ไม่ผ่าน"]
 
-# ฟังก์ชันสำหรับช่วยเจนช่องตรวจเอกสารแนวนอน (ฝั่งผู้บันทึก)
 def render_doc_row(label):
     c_status, c_note = st.columns([1, 2])
     with c_status:
@@ -62,7 +60,7 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
     if 'visible_docs' not in st.session_state:
         st.session_state.visible_docs = 3
 
-    with st.form(key='creator_form_v9'):
+    with st.form(key='creator_form_v10'):
         st.subheader("1. ข้อมูลทั่วไปและวันที่บันทึก")
         col1, col2 = st.columns(2)
         with col1:
@@ -72,8 +70,6 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
             doc_type = st.text_input("ประเภทคำขอ *", placeholder="เช่น ขออนุมัติโครงการ, ขอย้ายตำแหน่ง")
-            
-            # 1. นำอินพุตเวลาออก เหลือเฉพาะ วันที่บันทึกเอกสาร
             created_date = st.date_input("วันที่บันทึกเอกสาร *", datetime.now().date())
             
         st.write("---")
@@ -106,28 +102,28 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
         if not source_place or not doc_id_text or not fullname or not doc_type or not creator_name:
             st.error("❌ กรุณากรอกข้อมูลทั่วไปและชื่อผู้บันทึกให้ครบถ้วน")
         else:
-            # 2. แสดง Pop-up หมุนหลอดกำลังบันทึกข้อมูลหน่วงเวลา 3 วินาที
+            # เอฟเฟกต์หมุนโหลด 3 วินาทีตามบรีฟ
             with st.spinner("⏳ กำลังบันทึกข้อมูลลงฐานข้อมูล กรุณารอสักครู่..."):
-                time_lib.sleep(3) # หน่วงเวลา 3 วินาที
+                time_lib.sleep(3)
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # เชื่อมต่อ v10 
             conn = sqlite3.connect('document_management_v10.db')
             c = conn.cursor()
+            
+            # ไล่เช็คจับคู่คอลัมน์กับเครื่องหมายคำถาม (มีทั้งหมด 20 ตัวแปร = 20 เครื่องหมายคำถามพอดีเป๊ะ)
             c.execute('''
                 INSERT INTO docs_pool (
-                    source_place, doc_id_text, fullname, doc_type, creator_name,
-                    created_date_text,
-                    doc1_status, doc1_note, doc2_status, doc2_note,
-                    doc3_status, doc3_note, doc4_status, doc4_note,
-                    doc5_status, doc5_note, doc6_status, doc6_note,
+                    source_place, doc_id_text, fullname, doc_type, creator_name, created_date_text,
+                    doc1_status, doc1_note, doc2_status, doc2_note, doc3_status, doc3_note,
+                    doc4_status, doc4_note, doc5_status, doc5_note, doc6_status, doc6_note,
                     timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                source_place, doc_id_text, fullname, doc_type, creator_name,
-                str(created_date),
-                doc1_status, doc1_note, doc2_status, doc2_note,
-                doc3_status, doc3_note, doc4_status, doc4_note,
-                doc5_status, doc5_note, doc6_status, doc6_note,
+                source_place, doc_id_text, fullname, doc_type, creator_name, str(created_date),
+                doc1_status, doc1_note, doc2_status, doc2_note, doc3_status, doc3_note,
+                doc4_status, doc4_note, doc5_status, doc5_note, doc6_status, doc6_note,
                 current_time
             ))
             conn.commit()
@@ -144,7 +140,6 @@ if user_role == "📝 ผู้บันทึกข้อมูล":
 else:
     st.header("🔍 *ฝั่งผู้ตรวจสอบเอกสารและลงนาม*")
     
-    # ฟังก์ชันหน้าต่างลอยลอยขึ้นมาตรงกลางจอเมื่อสั่งรัน
     @st.dialog("🖊️ ฟอร์มลงชื่อตรวจรับรองเอกสาร", width="large")
     def show_inspection_modal(doc_id):
         conn = sqlite3.connect('document_management_v10.db')
@@ -187,8 +182,6 @@ else:
                     
                 final_status = st.selectbox("ผลการพิจารณาภาพรวม *", status_list, index=def_index)
                 inspector_input = st.text_input("ลงชื่อผู้ตรวจเอกสาร (ชื่อ-นามสกุล) *", value="" if data['inspector_name'] == "ยังไม่ได้ตรวจ" else data['inspector_name'])
-                
-                # 1. นำอินพุตเวลาออก เหลือเฉพาะ วันที่ตรวจรับรอง
                 inspected_date = st.date_input("วันที่พิจารณา/ตรวจรับรอง *", datetime.now().date())
                 
                 submit_modal = st.form_submit_button("💾 บันทึกผลตรวจ")
@@ -206,11 +199,10 @@ else:
                     ''', (inspector_input, final_status, str(inspected_date), doc_id))
                     conn.commit()
                     conn.close()
-                    
                     st.success("อัปเดตสถานะสำเร็จ!")
                     st.rerun()
 
-    # --- โครงสร้างหน้าหลักฝั่งผู้ตรวจ ---
+    # ดึงข้อมูลจากฐานข้อมูล v10
     conn = sqlite3.connect('document_management_v10.db')
     df_all = pd.read_sql_query("SELECT * FROM docs_pool ORDER BY id DESC", conn)
     conn.close()
@@ -218,7 +210,6 @@ else:
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        # Dashboard สรุปด้านบน
         st.subheader("📊 Dashboard สถานะการตรวจสอบภาพรวม")
         count_waiting = len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])
         count_approved = len(df_all[df_all['check_status'] == 'อนุมัติ'])
@@ -244,7 +235,6 @@ else:
         else:
             df_filtered = df_all
 
-        # หัวข้อตารางเหลือเฉพาะคอลัมน์ วันที่
         h1, h2, h3, h4, h5, h6, h7 = st.columns([0.8, 1.8, 1.8, 1.8, 1.8, 2.5, 1.5])
         h1.markdown("**ID**")
         h2.markdown("**เลขหนังสือ**")
@@ -260,11 +250,8 @@ else:
             r1.write(f"{row['id']}")
             r2.write(f"{row['doc_id_text']}")
             r3.write(f"{row['fullname']}")
-            
-            # ตารางโชว์เฉพาะ วันที่ ของผู้บันทึก
             r4.write(f"{row['creator_name']} ({row['created_date_text']})")
             
-            # ตารางโชว์เฉพาะ วันที่ ของผู้ตรวจ
             if row['inspector_name'] == 'ยังไม่ได้ตรวจ':
                 r5.write("-")
             else:
