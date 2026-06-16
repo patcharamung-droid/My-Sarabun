@@ -34,14 +34,12 @@ def init_db():
 
 init_db()
 
-# --- ระบบจำลองฐานข้อมูลบัญชีผู้ใช้งาน (User Credentials) ---
-# บัญชีสำหรับทดสอบระบบ
+# ระบบจำลองบัญชีผู้ใช้งาน
 USERS = {
     "user1": {"password": "1234", "role": "creator", "name": "สมชาย ใจดี (เจ้าหน้าที่บันทึก)"},
     "admin1": {"password": "1234", "role": "inspector", "name": "หัวหน้าสมศักดิ์ (ผู้ตรวจสอบ)"}
 }
 
-# ใช้ session_state ของ Streamlit ในการจำสถานะว่าล็อกอินหรือยัง
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_role" not in st.session_state:
@@ -49,7 +47,6 @@ if "user_role" not in st.session_state:
 if "user_fullname" not in st.session_state:
     st.session_state.user_fullname = None
 
-# ตั้งค่าหน้าเว็บ
 st.set_page_config(page_title="ระบบงานสารบรรณ", layout="wide")
 
 
@@ -76,19 +73,17 @@ if not st.session_state.logged_in:
                 st.rerun()
             else:
                 st.error("❌ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง")
-                
         st.info("💡 บัญชีสำหรับทดสอบ:\n- ผู้บันทึก: user1 / 1234\n- ผู้ตรวจ: admin1 / 1234")
-    st.stop() # หยุดการทำงานของโค้ดด้านล่างไว้ตรงนี้จนกว่าจะล็อกอินผ่าน
+    st.stop()
 
 
 # ==========================================
-# 🚪 เมื่อล็อกอินผ่านแล้ว แสดงแถบควบคุมด้านข้าง (Sidebar)
+# 🚪 แถบควบคุมด้านข้าง (Sidebar) หลังล็อกอิน
 # ==========================================
 st.sidebar.title("👤 ข้อมูลผู้ใช้งาน")
 st.sidebar.write(f"**ชื่อ:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์:** {'📝 ผู้บันทึกข้อมูล' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจสอบเอกสาร'}")
 
-# ปุ่มออกจากระบบ
 if st.sidebar.button("🚪 ออกจากระบบ"):
     st.session_state.logged_in = False
     st.session_state.user_role = None
@@ -107,22 +102,30 @@ def render_doc_row(label):
     return status, note
 
 
+# ฟังก์ชันส่วนกลางสำหรับดึงตารางข้อมูลมาแสดงผล (ใช้อ่านร่วมกันทั้ง 2 ฝั่ง)
+def get_documents_dataframe():
+    conn = sqlite3.connect('document_management_v10.db')
+    df = pd.read_sql_query("SELECT * FROM docs_pool ORDER BY id DESC", conn)
+    conn.close()
+    return df
+
+
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
     st.header("✍️ เมนูสำหรับเจ้าหน้าที่บันทึกข้อมูล")
     
+    # 1. ส่วนของฟอร์มกรอกข้อมูลบันทึกตามปกติ
     if 'visible_docs' not in st.session_state:
         st.session_state.visible_docs = 3
 
-    with st.form(key='creator_form_v12'):
-        st.subheader("1. ข้อมูลทั่วไปและวันที่บันทึก")
+    with st.form(key='creator_form_v13'):
+        st.subheader("1. กรอกข้อมูลเอกสารเข้าใหม่")
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.text_input("แหล่งที่มา *", placeholder="เช่น กองการเจ้าหน้าที่, หน่วยงานภายนอก")
             doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
-            # ดึงชื่อคนที่ล็อกอินมาใส่ในช่องชื่อผู้บันทึกให้โดยอัตโนมัติ ล็อกไม่ให้แก้เพื่อความโปร่งใส
             creator_name = st.text_input("ชื่อผู้บันทึกข้อมูล", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
@@ -165,7 +168,6 @@ if st.session_state.user_role == "creator":
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             conn = sqlite3.connect('document_management_v10.db')
             c = conn.cursor()
-            
             c.execute('''
                 INSERT INTO docs_pool (
                     source_place, doc_id_text, fullname, doc_type, creator_name, created_date_text,
@@ -186,6 +188,52 @@ if st.session_state.user_role == "creator":
             st.success(f"🎉 บันทึกข้อมูลเรียบร้อยแล้ว!")
             st.rerun()
 
+    # ✨ 2. ส่วนที่เพิ่มเข้ามาใหม่: แสดงตารางข้อมูลให้ผู้บันทึกดูได้ "อย่างเดียว" (ห้ามคลิกตรวจ/แก้ไข)
+    st.write("---")
+    st.subheader("📋 รายการข้อมูลเอกสารทั้งหมดในระบบ (สิทธิ์สำหรับดูข้อมูลเท่านั้น)")
+    df_all = get_documents_dataframe()
+    
+    if df_all.empty:
+        st.info("💡 ยังไม่มีรายการข้อมูลเอกสารในระบบ")
+    else:
+        # จัดฟอร์แมตหัวข้อคอลัมน์เหมือนฝั่งแอดมินเพื่อให้ดูง่าย
+        search_query = st.text_input("🔍 ค้นหาในตารางประวัติ (พิมพ์ แหล่งที่มา / เลขหนังสือ / ชื่อผู้ยื่น)")
+        if search_query:
+            df_filtered = df_all[df_all['source_place'].str.contains(search_query, case=False, na=False) |
+                                 df_all['doc_id_text'].str.contains(search_query, case=False, na=False) |
+                                 df_all['fullname'].str.contains(search_query, case=False, na=False)]
+        else:
+            df_filtered = df_all
+
+        # แสดงตารางหลักพ่นเฉพาะคอลัมน์สำคัญออกมา โดยไม่มีคอลัมน์ "การจัดการ (ปุ่มตรวจ)" เพื่อล็อกสิทธิ์ตามบรีฟ
+        h1, h2, h3, h4, h5, h6, h7 = st.columns([0.6, 1.4, 1.8, 1.8, 2.0, 2.0, 2.4])
+        h1.markdown("**ID**")
+        h2.markdown("**เลขหนังสือ**")
+        h3.markdown("**ชื่อ-สกุลผู้ยื่น**")
+        h4.markdown("**ประเภทคำขอ**")
+        h5.markdown("**ผู้บันทึก (วันที่)**")
+        h6.markdown("**ผู้ตรวจรับรอง (วันที่)**")
+        h7.markdown("**สถานะปัจจุบัน**")
+        st.markdown("<hr style='margin: 5px 0px 10px 0px; border-color: #ddd;' />", unsafe_allow_html=True)
+
+        for _, row in df_filtered.iterrows():
+            r1, r2, r3, r4, r5, r6, r7 = st.columns([0.6, 1.4, 1.8, 1.8, 2.0, 2.0, 2.4])
+            r1.write(f"{row['id']}")
+            r2.write(f"{row['doc_id_text']}")
+            r3.write(f"{row['fullname']}")
+            r4.write(f"{row['doc_type']}")
+            r5.write(f"{row['creator_name']} ({row['created_date_text']})")
+            r6.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({row['inspected_date_text']})")
+            
+            if row['check_status'] == 'รอตรวจเอกสาร':
+                r7.markdown("⏳ <span style='color:orange;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'อนุมัติ':
+                r7.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
+            elif row['check_status'] == 'ไม่อนุมัติ':
+                r7.markdown("🔴 <span style='color:red; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
+            else:
+                r7.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+
 
 # ==========================================
 # 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
@@ -193,6 +241,7 @@ if st.session_state.user_role == "creator":
 else:
     st.header("🔍 เมนูสำหรับผู้ตรวจสอบและลงนามอนุมัติ")
     
+    # ฟังก์ชันหน้าต่างลอยลอยขึ้นมาตรงกลางจอเมื่อสั่งรัน
     @st.dialog("🖊️ ฟอร์มลงชื่อตรวจรับรองเอกสาร", width="large")
     def show_inspection_modal(doc_id):
         conn = sqlite3.connect('document_management_v10.db')
@@ -233,7 +282,6 @@ else:
                     def_index = 0
                     
                 final_status = st.selectbox("ผลการพิจารณาภาพรวม *", status_list, index=def_index)
-                # ดึงชื่อผู้ตรวจที่ล็อกอินมาใส่ให้โดยอัตโนมัติ ล็อกช่องไว้เพื่อป้องกันการลงชื่อสวมรอย
                 inspector_input = st.text_input("ลงชื่อผู้ตรวจเอกสาร", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่พิจารณา/ตรวจรับรอง *", datetime.now().date())
                 
@@ -252,15 +300,12 @@ else:
                 st.success("อัปเดตสถานะและลงชื่อผู้ตรวจสำเร็จ!")
                 st.rerun()
 
-    # ดึงข้อมูลมาแสดงในหน้าแรกของผู้ตรวจ
-    conn = sqlite3.connect('document_management_v10.db')
-    df_all = pd.read_sql_query("SELECT * FROM docs_pool ORDER BY id DESC", conn)
-    conn.close()
+    df_all = get_documents_dataframe()
     
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        # Dashboard สรุปสถานะภาพรวม
+        # Dashboard
         st.subheader("📊 Dashboard Status การตรวจสอบภาพรวม")
         count_waiting = len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])
         count_approved = len(df_all[df_all['check_status'] == 'อนุมัติ'])
@@ -278,15 +323,13 @@ else:
         
         search_query = st.text_input("🔍 ค้นหาในตาราง (พิมพ์ แหล่งที่มา / เลขหนังสือ / ชื่อผู้ยื่น)")
         if search_query:
-            df_filtered = df_all[
-                df_all['source_place'].str.contains(search_query, case=False, na=False) |
-                df_all['doc_id_text'].str.contains(search_query, case=False, na=False) |
-                df_all['fullname'].str.contains(search_query, case=False, na=False)
-            ]
+            df_filtered = df_all[df_all['source_place'].str.contains(search_query, case=False, na=False) |
+                                 df_all['doc_id_text'].str.contains(search_query, case=False, na=False) |
+                                 df_all['fullname'].str.contains(search_query, case=False, na=False)]
         else:
             df_filtered = df_all
 
-        # แสดงตารางรายการหลัก
+        # แสดงตารางรายการหลักฝั่งผู้ตรวจ (มีคอลัมน์ "การจัดการ" ท้ายสุดสำหรับกดปุ่มป๊อปอัปตรวจ)
         h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([0.6, 1.4, 1.6, 1.6, 1.8, 1.8, 2.0, 1.2])
         h1.markdown("**ID**")
         h2.markdown("**เลขหนังสือ**")
@@ -305,11 +348,7 @@ else:
             r3.write(f"{row['fullname']}")
             r4.write(f"{row['doc_type']}")
             r5.write(f"{row['creator_name']} ({row['created_date_text']})")
-            
-            if row['inspector_name'] == 'ยังไม่ได้ตรวจ':
-                r6.write("-")
-            else:
-                r6.write(f"{row['inspector_name']} ({row['inspected_date_text']})")
+            r6.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']} ({row['inspected_date_text']})")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 r7.markdown("⏳ <span style='color:orange;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
