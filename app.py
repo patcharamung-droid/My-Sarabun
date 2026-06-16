@@ -5,7 +5,7 @@ import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
-st.set_page_config(page_title="ระบบงานสารบรรณ Google Sheets", layout="wide")
+st.set_page_config(page_title="ระบบตรวจสอบรายการเอกสารคำขอใบอนุญาต", layout="wide")
 
 # ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
 st.markdown("""
@@ -73,15 +73,16 @@ def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
     except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อ Google Sheets ได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
+        st.error("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
         st.stop()
 
 conn = get_gsheet_connection()
 
 # บัญชีผู้ใช้งานทดสอบ
 USERS = {
-    "user1": {"password": "1234", "role": "creator", "name": "สมชาย ใจดี (เจ้าหน้าที่บันทึก)"},
-    "admin1": {"password": "1234", "role": "inspector", "name": "หัวหน้าสมศักดิ์ (ผู้ตรวจสอบ)"}
+    "Patchara.mu": {"password": "431799", "role": "creator", "name": "นายพัชระ มุงคุลคำซาว (เจ้าหน้าที่บันทึก)"},
+    "Teera.j": {"password": "431800", "role": "creator", "name": "นายธีระ จงสมชัย (เจ้าหน้าที่บันทึก)"},
+    "sonyod.r": {"password": "431522", "role": "inspector", "name": "นายทรงยศ รังษา (ผู้ตรวจสอบ)"}
 }
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
@@ -90,13 +91,13 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจสอบรายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
             st.markdown("<h3 style='text-align: center;'>🔐 เข้าสู่ระบบ</h3>", unsafe_allow_html=True)
-            username_input = st.text_input("ชื่อผู้ใช้งาน", placeholder="user1 หรือ admin1")
-            password_input = st.text_input("รหัสผ่าน", type="password", placeholder="••••")
+            username_input = st.text_input("ชื่อผู้ใช้งาน", placeholder="กรุณาระบุชื่อผู้ใช้งาน")
+            password_input = st.text_input("รหัสผ่าน", type="password", placeholder="••••••")
             login_btn = st.form_submit_button("🔓 ล็อกอิน")
             
         if login_btn:
@@ -111,7 +112,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
-st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ สารบรรณ</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต สำนักงาน กสทช. ภาค 2</h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
@@ -128,7 +129,7 @@ status_options = ["ผ่าน", "ไม่ผ่าน"]
 def render_doc_row(label):
     c_status, c_note = st.columns([1, 2])
     with c_status: status = st.radio(label, status_options, index=0, horizontal=True, key=f"status_{label}")
-    with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด (ถ้ามี)", key=f"note_{label}")
+    with c_note: note = st.text_input("หมายเหตุเพิ่มเติม", placeholder=f"ระบุรายละเอียด ", key=f"note_{label}")
     return status, note
 
 def load_data():
@@ -147,7 +148,7 @@ def load_data():
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
-    st.subheader("📝 ฟอร์มลงทะเบียนเอกสารและตรวจสอบเบื้องต้น")
+    st.subheader("📝 ฟอร์มตรวจสอบรายการเอกสารและบันทึกข้อมูลเบื้องต้น")
     
     # กำหนดจำนวนช่องเอกสารเริ่มต้น (Default เริ่มที่ 3 ช่อง)
     if 'visible_docs' not in st.session_state: 
@@ -157,11 +158,11 @@ if st.session_state.user_role == "creator":
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.selectbox("แหล่งที่มา *", ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"])
-            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="เช่น สร.0001/2569")
-            creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
+            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="กรุณาระบุ")
+            creator_name = st.text_input("ผู้บันทึก/ตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
-            doc_type = st.text_input("ประเภทคำขอ *", placeholder="เช่น ขออนุมัติโครงการ")
+            doc_type = st.text_input("ประเภทคำขอ *", placeholder="คำขอ...")
             created_date = st.date_input("วันที่บันทึก *", datetime.now().date())
             
         st.write("---")
@@ -180,7 +181,7 @@ if st.session_state.user_role == "creator":
                 doc_data_inputs[f"doc{i}_note"] = ""
             
         st.write("---")
-        submit_button = st.form_submit_button(label='💾 บันทึกส่งเข้า Google Sheet ถาวร')
+        submit_button = st.form_submit_button(label='💾 บันทึกข้อมูล')
 
     # ✨ ปุ่มควบคุมการ เพิ่ม และ ลบ ช่องเอกสาร (อยู่นอกกรอบฟอร์มเพื่อแก้ไขค่าได้ทันที)
     c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
@@ -197,7 +198,7 @@ if st.session_state.user_role == "creator":
         if not doc_id_text or not fullname or not doc_type:
             st.error("❌ กรุณากรอกข้อมูลด่านหลักให้ครบถ้วน")
         else:
-            with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูลเข้า Google Sheet..."):
+            with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูล..."):
                 time_lib.sleep(3)
             
             df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
@@ -216,11 +217,11 @@ if st.session_state.user_role == "creator":
             conn.update(data=updated_df)
             
             st.session_state.visible_docs = 3  # รีเซ็ตจำนวนช่องกลับไปที่ 3 สำหรับใบงานถัดไป
-            st.success("🎉 บันทึกข้อมูลลง Google Sheet เรียบร้อยและถาวร!")
+            st.success("🎉 บันทึกข้อมูล!")
             st.rerun()
 
     st.write("---")
-    st.markdown("<h3 style='color:#800000;'>📋 คลังประวัติรายการเอกสารใน Google Sheet (สำหรับดูข้อมูล)</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#800000;'>📋 รายการเอกสารคำขอ</h3>", unsafe_allow_html=True)
     df_raw = load_data()
     if not df_raw.empty:
         sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูลด่วนในตาราง (เลขหนังสือ / ชื่อผู้ยื่น)")
@@ -248,12 +249,12 @@ if st.session_state.user_role == "creator":
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติ':
+            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
                 c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติ':
+            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
@@ -263,9 +264,9 @@ if st.session_state.user_role == "creator":
 # 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
 # ==========================================
 else:
-    st.subheader("🔍 ศูนย์ควบคุมการพิจารณาตรวจสอบสิทธิ์ผู้ตรวจอนุมัติ")
+    st.subheader("🔍 การพิจารณาตรวจสอบอนุมัติพิมพ์ใบอนุญาต")
     
-    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสารกลาง", width="large")
+    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติเอกสาร", width="large")
     def show_inspection_modal(doc_id):
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
@@ -286,10 +287,10 @@ else:
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติ", "ไม่อนุมัติ", "ยกเลิก"])
+                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติเอกสาร *", datetime.now().date())
-                submit_modal = st.form_submit_button("💾 ยืนยันผลมติภาพรวม")
+                submit_modal = st.form_submit_button("💾 ยืนยันบันทึก")
                 
             if submit_modal:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
@@ -297,24 +298,24 @@ else:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspected_date_text'] = str(inspected_date)
                 
                 conn.update(data=df_existing)
-                st.success("🎉 บันทึกผลตรวจและวันที่รับรองลง Google Sheet สำเร็จ!")
+                st.success("🎉 บันทึกผลตรวจและวันที่รับรองสำเร็จ!")
                 st.rerun()
 
     df_all = load_data()
     if df_all.empty:
         st.info("💡 ขณะนี้ยังไม่มีรายการเอกสารส่งเข้ามาในระบบ")
     else:
-        st.markdown("<h4 style='color:#800000;'>📊 แดชบอร์ดสรุปสถิติทะเบียนรวม</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color:#800000;'>📊สรุปสถิติ</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
-        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติแล้ว</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
-        m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
-        m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิก</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิก'])}</h2></div>", unsafe_allow_html=True)
+        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติพิมพ์ใบอนุญาตแล้ว</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติคำขอ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติ'])}</h2></div>", unsafe_allow_html=True)
+        m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิกคำขอ</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิก'])}</h2></div>", unsafe_allow_html=True)
         
         st.write("---")
-        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารคำขออนุญาต</h3>", unsafe_allow_html=True)
         
-        search_query = st.text_input("🔍 ค้นหาด่วนในคลังสารบรรณ (เลขหนังสือ / ชื่อผู้ยื่น)")
+        search_query = st.text_input("🔍 ค้นหาข้อมูลด่วน (เลขหนังสือ / ชื่อผู้ยื่น)")
         if search_query:
             df_filtered = df_all[df_all['doc_id_text'].str.contains(search_query, case=False, na=False) | df_all['fullname'].str.contains(search_query, case=False, na=False)]
         else:
@@ -337,12 +338,12 @@ else:
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติ':
+            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
                 c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติ</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติ':
+            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิก</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
             if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                 show_inspection_modal(int(row['id']))
