@@ -16,7 +16,6 @@ def init_db():
             doc_type TEXT,
             creator_name TEXT,
             created_date_text TEXT,   -- วันที่ผู้บันทึกกรอก
-            created_time_text TEXT,   -- เวลาที่ผู้บันทึกกรอก
             doc1_status TEXT, doc1_note TEXT,
             doc2_status TEXT, doc2_note TEXT,
             doc3_status TEXT, doc3_note TEXT,
@@ -25,8 +24,7 @@ def init_db():
             doc6_status TEXT, doc6_note TEXT,
             inspector_name TEXT DEFAULT 'ยังไม่ได้ตรวจ',
             inspected_date_text TEXT DEFAULT '-', -- วันที่ผู้ตรวจลงนาม
-            inspected_time_text TEXT DEFAULT '-', -- เวลาที่ผู้ตรวจลงนาม
-            check_status TEXT DEFAULT 'รอตรวจเอกสาร',
+                        check_status TEXT DEFAULT 'รอตรวจเอกสาร',
             timestamp TEXT
         )
     ''')
