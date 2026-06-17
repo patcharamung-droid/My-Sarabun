@@ -311,13 +311,13 @@ def generate_report_pdf_weasy(row_data):
         
         <div class="signature-container">
             <div class="signature-box" style="float: left;">
-                ลงชื่อ.......................................................... ผู้บันทึก<br>
+                ลงชื่อ.......................................................... ผู้ตรวจ<br>
                 ( {row_data['creator_name']} )<br>
                 ตำแหน่ง: เจ้าหน้าที่ตรวจเอกสารคำขอ<br>
                 ลงวันที่: {row_data['created_date_text']}
             </div>
             <div class="signature-box" style="float: right;">
-                ลงชื่อ.......................................................... ผู้ตรวจ<br>
+                ลงชื่อ.......................................................... ผู้อนุมัติ<br>
                 ( {row_data['inspector_name']} )<br>
                 ตำแหน่ง: ผู้ตรวจอนุมัติออกใบอนุญาต<br>
                 ลงวันที่: {row_data['inspected_date_text']}
