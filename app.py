@@ -200,11 +200,11 @@ def generate_report_pdf(row_data):
     f_normal = 'TH-Sarabun' if fonts_ready else 'Helvetica'
     f_bold = 'TH-Sarabun-Bold' if fonts_ready else 'Helvetica-Bold'
     
-    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=20, leading=24, alignment=1, textColor=colors.HexColor('#800000'))
-    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=13, leading=18, alignment=1, textColor=colors.HexColor('#555555'))
-    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=13, leading=18)
-    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=13, leading=18)
-    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=13, leading=18, textColor=colors.white)
+    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=20, leading=28, alignment=1, textColor=colors.HexColor('#800000'))
+    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=13, leading=20, alignment=1, textColor=colors.HexColor('#555555'))
+    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=13, leading=22)
+    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=13, leading=22)
+    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=13, leading=22, textColor=colors.white)
     
     # 1. หัวเอกสารรายงาน
     story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
@@ -239,7 +239,8 @@ def generate_report_pdf(row_data):
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#800000')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('PADDING', (0,0), (-1,-1), 6)
+        ('TOPPADDING', (0,0), (-1,-1), 10),    # เพิ่มพื้นที่ด้านบนช่องตารางให้ไม้เอกลอยได้
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10), # เพิ่มพื้นที่ด้านล่างช่องตารางให้สมดุล
     ]))
     story.append(t_check)
     story.append(Spacer(1, 15))
@@ -254,9 +255,12 @@ def generate_report_pdf(row_data):
         [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
     ]
     t_sum = Table(summary_data, colWidths=[140, 400])
-    t_sum.setStyle(TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e0e0e0')), ('PADDING', (0,0), (-1,-1), 8), ('VALIGN', (0,0), (-1,-1), 'TOP')]))
-    story.append(t_sum)
-    story.append(Spacer(1, 35))
+    t_sum.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e0e0e0')), 
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 10),    # เพิ่มพื้นที่ด้านบนหลบไม้เอกหาย
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10), 
+    ]))
     
     # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
     sign_data = [
