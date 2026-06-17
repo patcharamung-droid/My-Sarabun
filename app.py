@@ -337,7 +337,7 @@ col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
-    st.subheader("📝 ฟอร์มเช็คเอกสารและตรวจสอบเบื้องต้น")
+    st.subheader("📝 แบบเช็ครายการเอกสารคำขอและตรวจสอบเบื้องต้น")
     
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
@@ -482,7 +482,7 @@ if st.session_state.user_role == "creator":
 # 🔵 หน้าจอเฉพาะสำหรับ: 🔍 ผู้ตรวจสอบเอกสาร (role == 'inspector')
 # ==========================================
 else:
-    st.subheader("🔍 ฟอร์มพิจารณาตรวจสอบรายการเอกสารและตรวจอนุมัติพิมพ์ใบอนุญาต")
+    st.subheader("📝 แบบพิจารณาตรวจสอบรายการเอกสารคำขอและอนุมัติพิมพ์ใบอนุญาต")
     
     @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติออกใบอนุญาต", width="large")
     def show_inspection_modal(doc_id):
