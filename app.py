@@ -71,12 +71,14 @@ st.markdown("""
             word-break: break-word;
         }
         
-        /* บังคับให้หัวตารางบนหน้าเว็บแสดงผลเป็นตัวอักษรสีขาว และตัวหนา 100% */
+        /* 🎯 [แก้ไขสำเร็จ] บังคับให้ข้อความหัวตารางแสดงผล "ตรงกลางช่อง" ตัวหนา และสีขาว */
         .table-header-text {
             font-size: 14px !important;
             font-family: 'Sarabun', sans-serif !important;
             color: #ffffff !important;
             font-weight: bold !important;
+            text-align: center !important;
+            width: 100%;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -327,7 +329,7 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# 🎯 [แก้ไขสัดส่วนใหม่] เกลี่ยสัดส่วนคอลัมน์ตารางให้ชื่อผู้ยื่น (1.5) ผู้บันทึก (1.5) และผู้ตรวจ (1.5) มีพื้นที่กว้างพอดี ไม่ตัดข้อความ
+# เกลี่ยสัดส่วนคอลัมน์ตารางให้ชื่อผู้ยื่น (1.5) ผู้บันทึก (1.5) และผู้ตรวจ (1.5) มีพื้นที่กว้างพอดี ไม่ตัดข้อความ
 col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
 col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
 
