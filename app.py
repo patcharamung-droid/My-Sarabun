@@ -354,7 +354,7 @@ else:
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
-                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติพิมพ์ใบอนุญาต'</span>", unsafe_allow_html=True)
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
