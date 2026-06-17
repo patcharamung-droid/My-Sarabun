@@ -129,7 +129,7 @@ if not st.session_state.logged_in:
 st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต</h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
-st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
+st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่ตรวจเอกสาร' if st.session_state.user_role == 'creator' else '🔍 ผู้อนุมัติออกใบอนุญาต'}")
 st.sidebar.write("---")
 
 if st.sidebar.button("🚪 ออกจากระบบ"):
@@ -313,13 +313,13 @@ def generate_report_pdf_weasy(row_data):
             <div class="signature-box" style="float: left;">
                 ลงชื่อ.......................................................... ผู้บันทึก<br>
                 ( {row_data['creator_name']} )<br>
-                ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ<br>
+                ตำแหน่ง: เจ้าหน้าที่ตรวจเอกสารคำขอ<br>
                 ลงวันที่: {row_data['created_date_text']}
             </div>
             <div class="signature-box" style="float: right;">
                 ลงชื่อ.......................................................... ผู้ตรวจ<br>
                 ( {row_data['inspector_name']} )<br>
-                ตำแหน่ง: ผู้ตรวจอนุมัติพิมพ์ใบอนุญาต<br>
+                ตำแหน่ง: ผู้ตรวจอนุมัติออกใบอนุญาต<br>
                 ลงวันที่: {row_data['inspected_date_text']}
             </div>
         </div>
@@ -330,14 +330,14 @@ def generate_report_pdf_weasy(row_data):
 
 
 # เกลี่ยสัดส่วนคอลัมน์ตารางให้ชื่อผู้ยื่น (1.5) ผู้บันทึก (1.5) และผู้ตรวจ (1.5) มีพื้นที่กว้างพอดี ไม่ตัดข้อความ
-col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
-col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
+col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
+col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
 # ==========================================
 if st.session_state.user_role == "creator":
-    st.subheader("📝 ฟอร์มบันทึกเอกสารและตรวจสอบเบื้องต้น")
+    st.subheader("📝 ฟอร์มเช็คเอกสารและตรวจสอบเบื้องต้น")
     
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
@@ -426,11 +426,11 @@ if st.session_state.user_role == "creator":
                     f"<div style='flex:{col_widths_creator[2]};' class='table-header-text'>เลขหนังสือ</div>"
                     f"<div style='flex:{col_widths_creator[3]};' class='table-header-text'>ชื่อผู้ยื่น</div>"
                     f"<div style='flex:{col_widths_creator[4]};' class='table-header-text'>ประเภทงาน</div>"
-                    f"<div style='flex:{col_widths_creator[5]};' class='table-header-text'>ผู้บันทึก</div>"
+                    f"<div style='flex:{col_widths_creator[5]};' class='table-header-text'>ผู้ตรวจเอกสาร</div>"
                     f"<div style='flex:{col_widths_creator[6]};' class='table-header-text'>วันที่บันทึก</div>"
-                    f"<div style='flex:{col_widths_creator[7]};' class='table-header-text'>ผู้ตรวจ</div>"
-                    f"<div style='flex:{col_widths_creator[8]};' class='table-header-text'>วันที่ตรวจ</div>"
-                    f"<div style='flex:{col_widths_creator[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
+                    f"<div style='flex:{col_widths_creator[7]};' class='table-header-text'>ผู้อนุมัติออกใบอนุญาต</div>"
+                    f"<div style='flex:{col_widths_creator[8]};' class='table-header-text'>วันที่อนุมัติ</div>"
+                    f"<div style='flex:{col_widths_creator[9]};' class='table-header-text'>ความคิดเห็นผู้อนุมัติ</div>"
                     f"<div style='flex:{col_widths_creator[10]};' class='table-header-text'>สถานะ</div>"
                     f"<div style='flex:{col_widths_creator[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
@@ -456,8 +456,8 @@ if st.session_state.user_role == "creator":
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
                 c_act.markdown("<div style='color:gray; font-size:13px; font-style:italic; padding-left:5px;'>⏳ รอผลตรวจ</div>", unsafe_allow_html=True)
             else:
-                if current_status == 'อนุมัติพิมพ์ใบอนุญาต':
-                    c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
+                if current_status == 'อนุมัติออกใบอนุญาต':
+                    c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติออกใบอนุญาต</span>", unsafe_allow_html=True)
                 elif current_status == 'ไม่อนุมัติคำขอ':
                     c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
                 else:
@@ -484,7 +484,7 @@ if st.session_state.user_role == "creator":
 else:
     st.subheader("🔍 ฟอร์มพิจารณาตรวจสอบรายการเอกสารและตรวจอนุมัติพิมพ์ใบอนุญาต")
     
-    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติพิมพ์ใบอนุญาต", width="large")
+    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติออกใบอนุญาต", width="large")
     def show_inspection_modal(doc_id):
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
@@ -493,8 +493,8 @@ else:
             st.error("🔒 เอกสารรายการนี้ได้รับการพิจารณาและล็อกสถานะถาวรแล้ว ไม่สามารถแก้ไขได้")
             time_lib.sleep(2); st.rerun(); return
 
-        st.markdown(f"<h5>📦 ตรวจรับรองคำขอเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
-        st.write(f"**แหล่งที่มา:** {data['source_place']} | **ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} ({data['created_date_text']})")
+        st.markdown(f"<h5>📦 คำขอเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
+        st.write(f"**แหล่งที่มา:** {data['source_place']} | **ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้ตรวจเอกสาร:** {data['creator_name']} ({data['created_date_text']})")
         st.write("---")
         
         col_detail, col_form = st.columns([1, 1])
@@ -509,14 +509,14 @@ else:
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("มติสถานะภาพรวม *", ["อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
-                inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
+                final_status = st.selectbox("สถานะภาพรวม *", ["อนุมัติออกใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
+                inspector_input = st.text_input("ผู้ลงนามอนุมัติ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติ *", datetime.now().date())
                 
                 exist_comment = data['inspector_comment'] if ('inspector_comment' in data and pd.notna(data['inspector_comment']) and data['inspector_comment'] != "-") else ""
-                inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม")
+                inspector_comment_input = st.text_area("ความคิดเห็นผู้อนุมัติ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม")
                 
-                submit_modal = st.form_submit_button("💾 ยืนยันบันทึกผลตรวจ (ล็อกถาวร)")
+                submit_modal = st.form_submit_button("💾 ยืนยันพิมพ์ใบอนุญาต")
                 
             if submit_modal:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
@@ -535,7 +535,7 @@ else:
         st.markdown("<h4 style='color:#800000;'>📊 สรุปข้อมูลรายการคำขอ</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
-        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติพิมพ์ใบอนุญาต</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต'])}</h2></div>", unsafe_allow_html=True)
+        m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติออกใบอนุญาต</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต'])}</h2></div>", unsafe_allow_html=True)
         m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติคำขอ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติคำขอ'])}</h2></div>", unsafe_allow_html=True)
         m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิกคำขอ</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิกคำขอ'])}</h2></div>", unsafe_allow_html=True)
         
@@ -543,7 +543,7 @@ else:
         
         col_title, col_ref = st.columns([5, 1])
         with col_title:
-            st.markdown("<h3 style='color:#800000; margin:0;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#800000; margin:0;'>📋 รายการข้อมูลคำขอในระบบ</h3>", unsafe_allow_html=True)
         with col_ref:
             if st.button("🔄 รีเฟรชรายการ", key="ref_inspector"):
                 st.cache_data.clear(); st.rerun()
@@ -560,12 +560,12 @@ else:
                     f"<div style='flex:{col_widths_inspector[2]};' class='table-header-text'>เลขหนังสือ</div>"
                     f"<div style='flex:{col_widths_inspector[3]};' class='table-header-text'>ชื่อผู้ยื่น</div>"
                     f"<div style='flex:{col_widths_inspector[4]};' class='table-header-text'>ประเภทงาน</div>"
-                    f"<div style='flex:{col_widths_inspector[5]};' class='table-header-text'>ผู้บันทึก</div>"
+                    f"<div style='flex:{col_widths_inspector[5]};' class='table-header-text'>ผู้ตรวจเอกสาร</div>"
                     f"<div style='flex:{col_widths_inspector[6]};' class='table-header-text'>วันที่บันทึก</div>"
-                    f"<div style='flex:{col_widths_inspector[7]};' class='table-header-text'>ผู้ตรวจ</div>"
-                    f"<div style='flex:{col_widths_inspector[8]};' class='table-header-text'>วันที่ตรวจ</div>"
-                    f"<div style='flex:{col_widths_inspector[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
-                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>Ref สถานะ</div>"
+                    f"<div style='flex:{col_widths_inspector[7]};' class='table-header-text'>ผู้อนุมัติออกใบอนุญาต</div>"
+                    f"<div style='flex:{col_widths_inspector[8]};' class='table-header-text'>วันที่อนุมัติ</div>"
+                    f"<div style='flex:{col_widths_inspector[9]};' class='table-header-text'>ความคิดเห็นผู้อนุมัติ</div>"
+                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>สถานะ</div>"
                     f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
@@ -588,8 +588,8 @@ else:
             current_status = row['check_status']
             if current_status == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif current_status == 'อนุมัติพิมพ์ใบอนุญาต':
-                c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
+            elif current_status == 'อนุมัติออกใบอนุญาต':
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติออกใบอนุญาต</span>", unsafe_allow_html=True)
             elif current_status == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
