@@ -190,7 +190,7 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
-# ✨ ฟังก์ชันปรับแต่งรายงาน PDF แก้บั๊กสระลอยซ้อนทับและไม้เอกไม้โทหายอย่างสมบูรณ์แบบ
+# ฟังก์ชันปรับแต่งรายงาน PDF แก้ปัญหาเรื่องไม้เอกไม้โทสระลอยโดนบังถาวร
 def generate_report_pdf(row_data):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
@@ -199,14 +199,13 @@ def generate_report_pdf(row_data):
     f_normal = 'TH-Sarabun' if fonts_ready else 'Helvetica'
     f_bold = 'TH-Sarabun-Bold' if fonts_ready else 'Helvetica-Bold'
     
-    # 🎯 [แก้ไขระดับโครงสร้างสไตล์] ดันค่า leading ขยับเพิ่มขึ้นให้มาก เพื่อเปิดช่องอากาศกว้างขวางให้ไม้เอก ไม้โท ไม่จมหาย
-    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=18, leading=26, alignment=1, textColor=colors.HexColor('#800000'))
-    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=14, leading=22, alignment=1, textColor=colors.HexColor('#444444'))
+    # 🎨 [แก้ไขด่วนตามบรีฟ] ปรับลดขนาดตัวอักษรลงมาที่ระดับ 11.5pt เพื่อลดความสูงสระ และให้มีสเปซเหลือเฟือหลบไม้เอกหาย
+    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=18, leading=24, alignment=1, textColor=colors.HexColor('#800000'))
+    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=12.5, leading=18, alignment=1, textColor=colors.HexColor('#444444'))
     
-    # บังคับเพิ่ม leading เป็น 25 ในขนาดฟอนต์ 13 (แก้ไขบั๊กคำว่า ที่, ชื่อ, ยื่น ไม่ให้วรรณยุกต์จมหายลงไปในสระหลัก)
-    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=13, leading=25) 
-    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=13, leading=25)
-    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=13, leading=25, textColor=colors.white)
+    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=11.5, leading=20) 
+    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=11.5, leading=20)
+    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=11.5, leading=20, textColor=colors.white)
     
     # 1. หัวเอกสารรายงาน
     story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
@@ -221,8 +220,8 @@ def generate_report_pdf(row_data):
     t_base = Table(base_info, colWidths=[110, 160, 110, 160])
     t_base.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), 
-        ('TOPPADDING', (0,0), (-1,-1), 12),    # ดันระยะขอบในตารางลง เพื่อเปิดหน้าตากลุ่มไม้เอก
-        ('BOTTOMPADDING', (0,0), (-1,-1), 12)
+        ('TOPPADDING', (0,0), (-1,-1), 10),    
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10)
     ]))
     story.append(t_base)
     story.append(Spacer(1, 15))
@@ -245,7 +244,7 @@ def generate_report_pdf(row_data):
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#800000')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 14),    # เพิ่มพื้นที่ด้านบนช่องตารางเคลียร์บั๊กไม้เอกหาย
+        ('TOPPADDING', (0,0), (-1,-1), 14),    # ขยายพื้นที่ขอบบนเป็น 14 เพื่อหนีห่างไม้เอกจากการครอบงำของขอบตาราง
         ('BOTTOMPADDING', (0,0), (-1,-1), 14), 
     ]))
     story.append(t_check)
@@ -257,7 +256,7 @@ def generate_report_pdf(row_data):
     
     comment_box = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
     summary_data = [
-        [Paragraph("<b>สถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=13, leading=25, textColor=colors.HexColor('#800000')))],
+        [Paragraph("<b>สถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=11.5, leading=20, textColor=colors.HexColor('#800000')))],
         [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
     ]
     t_sum = Table(summary_data, colWidths=[140, 400])
@@ -268,7 +267,7 @@ def generate_report_pdf(row_data):
         ('BOTTOMPADDING', (0,0), (-1,-1), 14), 
     ]))
     story.append(t_sum)
-    story.append(Spacer(1, 40)) # เว้นระยะให้กล่องลายเซ็นอยู่ห่างกำลังดี
+    story.append(Spacer(1, 45)) 
     
     # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
     sign_data = [
@@ -281,7 +280,7 @@ def generate_report_pdf(row_data):
     t_sign.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'CENTER'), 
         ('VALIGN', (0,0), (-1,-1), 'TOP'), 
-        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('TOPPADDING', (0,0), (-1,-1), 12),
         ('BOTTOMPADDING', (0,0), (-1,-1), 12)
     ]))
     story.append(t_sign)
