@@ -4,8 +4,9 @@ from datetime import datetime
 import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 import io
+import urllib.request # สำหรับดึงฟอนต์ไทยจากอินเทอร์เน็ต
 
-# นำเข้าเครื่องมือสำหรับสร้าง PDF (ReportLab)
+# นำเข้าเครื่องมือสร้าง PDF
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,6 +16,28 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
+
+# ✨ ฟังก์ชันดาวน์โหลดและลงทะเบียนฟอนต์ไทยอัจฉริยะ (แก้ปัญหาตาราง ■■■)
+@st.cache_resource
+def init_thai_fonts():
+    try:
+        # ดึงฟอนต์ "Sarabun" เวอร์ชันปกติและตัวหนาตรงจาก Google Fonts
+        regular_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
+        bold_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf"
+        
+        reg_data = urllib.request.urlopen(regular_url).read()
+        bold_data = urllib.request.urlopen(bold_url).read()
+        
+        # ลงทะเบียนเข้าสู่ระบบดึงฟอนต์ของ ReportLab
+        pdfmetrics.registerFont(TTFont('TH-Sarabun', io.BytesIO(reg_data)))
+        pdfmetrics.registerFont(TTFont('TH-Sarabun-Bold', io.BytesIO(bold_data)))
+        return True
+    except Exception as e:
+        st.warning(f"⚠️ ไม่สามารถโหลดฟอนต์ไทยผ่านระบบคลาวด์ได้ชั่วคราว: {e}")
+        return False
+
+# เรียกใช้งานระบบเตรียมฟอนต์ภาษาไทย
+fonts_ready = init_thai_fonts()
 
 # ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
 st.markdown("""
@@ -167,29 +190,33 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
-# ฟังก์ชันอัจฉริยะสำหรับสร้างรายงานเป็นฟอร์ม PDF พรีเมียมภาษาไทย 
+# ฟังก์ชันปรับแต่งการใช้ฟอนต์ภาษาไทยเพื่อแก้ปัญหากล่องสี่เหลี่ยมดำ
 def generate_report_pdf(row_data):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     story = []
     
-    # พยายามโหลดฟอนต์ระบบภาษาไทยมาตรฐาน (Helvetica สแตนด์บาย)
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('TitleStyle', fontName='Helvetica-Bold', fontSize=18, leading=22, alignment=1, textColor=colors.HexColor('#800000'))
-    normal_style = ParagraphStyle('NormalStyle', fontName='Helvetica', fontSize=11, leading=16)
-    bold_style = ParagraphStyle('BoldStyle', fontName='Helvetica-Bold', fontSize=11, leading=16)
+    # กำหนดสิทธิ์เรียกใช้ฟอนต์ภาษาไทย (ถ้าโหลดสำเร็จใช้ TH-Sarabun ถ้าล้มเหลวใช้สแตนด์บายของระบบ)
+    f_normal = 'TH-Sarabun' if fonts_ready else 'Helvetica'
+    f_bold = 'TH-Sarabun-Bold' if fonts_ready else 'Helvetica-Bold'
+    
+    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=20, leading=24, alignment=1, textColor=colors.HexColor('#800000'))
+    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=13, leading=18, alignment=1, textColor=colors.HexColor('#555555'))
+    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=13, leading=18)
+    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=13, leading=18)
+    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=13, leading=18, textColor=colors.white)
     
     # 1. หัวเอกสารรายงาน
     story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
-    story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบสิทธิ์และเอกสารคำขอใบอนุญาต", ParagraphStyle('Sub', fontName='Helvetica', fontSize=12, alignment=1)))
-    story.append(Spacer(1, 20))
+    story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบสิทธิ์และเอกสารคำขอใบอนุญาต", subtitle_style))
+    story.append(Spacer(1, 15))
     
-    # 2. รายละเอียดข้อมูลพื้นฐาน (จัดเป็นตารางไร้ขอบ)
+    # 2. รายละเอียดข้อมูลพื้นฐาน
     base_info = [
         [Paragraph("<b>เลขหนังสือหลัก:</b>", normal_style), Paragraph(str(row_data['doc_id_text']), normal_style), Paragraph("<b>แหล่งที่มาจากระบบ:</b>", normal_style), Paragraph(str(row_data['source_place']), normal_style)],
         [Paragraph("<b>ชื่อ-สกุลผู้ยื่นคำขอ:</b>", normal_style), Paragraph(str(row_data['fullname']), normal_style), Paragraph("<b>ประเภทคำขอ:</b>", normal_style), Paragraph(str(row_data['doc_type']), normal_style)]
     ]
-    t_base = Table(base_info, colWidths=[120, 150, 110, 150])
+    t_base = Table(base_info, colWidths=[110, 160, 110, 160])
     t_base.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('BOTTOMPADDING', (0,0), (-1,-1), 6)]))
     story.append(t_base)
     story.append(Spacer(1, 15))
@@ -198,7 +225,7 @@ def generate_report_pdf(row_data):
     story.append(Paragraph("<b>📋 รายละเอียดและสถานะเอกสารแนบ (Attachment Checklist)</b>", bold_style))
     story.append(Spacer(1, 5))
     
-    checklist_data = [[Paragraph("<b>ลำดับเอกสาร</b>", bold_style), Paragraph("<b>สถานะผลตรวจ</b>", bold_style), Paragraph("<b>รายละเอียดหมายเหตุเพิ่มเติม</b>", bold_style)]]
+    checklist_data = [[Paragraph("<b>ลำดับเอกสาร</b>", header_table_style), Paragraph("<b>สถานะผลตรวจ</b>", header_table_style), Paragraph("<b>รายละเอียดหมายเหตุเพิ่มเติม</b>", header_table_style)]]
     for i in range(1, 7):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
@@ -207,16 +234,15 @@ def generate_report_pdf(row_data):
             note_text = str(row_data[nt_key]) if (pd.notna(row_data[nt_key]) and row_data[nt_key] != "") else "-"
             checklist_data.append([Paragraph(f"เอกสารแนบลำดับที่ {i}", normal_style), Paragraph(status_text, normal_style), Paragraph(note_text, normal_style)])
             
-    t_check = Table(checklist_data, colWidths=[130, 110, 290])
+    t_check = Table(checklist_data, colWidths=[130, 110, 300])
     t_check.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#800000')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('PADDING', (0,0), (-1,-1), 6)
     ]))
     story.append(t_check)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 15))
     
     # 4. มติสรุปและความคิดเห็นผู้ตรวจ
     story.append(Paragraph("<b>🔍 สรุปมติและผลพิจารณาภาพรวมระบบ</b>", bold_style))
@@ -224,23 +250,23 @@ def generate_report_pdf(row_data):
     
     comment_box = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
     summary_data = [
-        [Paragraph("<b>มติสถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName='Helvetica-Bold', textColor=colors.HexColor('#800000')))],
+        [Paragraph("<b>มติสถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=13, textColor=colors.HexColor('#800000')))],
         [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
     ]
-    t_sum = Table(summary_data, colWidths=[140, 390])
+    t_sum = Table(summary_data, colWidths=[140, 400])
     t_sum.setStyle(TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e0e0e0')), ('PADDING', (0,0), (-1,-1), 8), ('VALIGN', (0,0), (-1,-1), 'TOP')]))
     story.append(t_sum)
-    story.append(Spacer(1, 40))
+    story.append(Spacer(1, 35))
     
-    # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่ (จัดสมดุลซ้าย-ขวา)
+    # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
     sign_data = [
         [
             Paragraph(f"ลงชื่อ.......................................................... ผู้บันทึก<br/>( {row_data['creator_name']} )<br/>ตำแหน่ง: เจ้าหน้าที่บันทึกระบบสารบรรณ<br/>ลงวันที่: {row_data['created_date_text']}", normal_style),
             Paragraph(f"ลงชื่อ.......................................................... ผู้ตรวจ<br/>( {row_data['inspector_name']} )<br/>ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br/>ลงวันที่: {row_data['inspected_date_text']}", normal_style)
         ]
     ]
-    t_sign = Table(sign_data, colWidths=[265, 265])
-    t_sign.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('LINEBELOW', (0,0), (-1,-1), 0, colors.white)]))
+    t_sign = Table(sign_data, colWidths=[270, 270])
+    t_sign.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('VALIGN', (0,0), (-1,-1), 'TOP'), ('BOTTOMPADDING', (0,0), (-1,-1), 10)]))
     story.append(t_sign)
     
     doc.build(story)
@@ -249,7 +275,7 @@ def generate_report_pdf(row_data):
 
 # อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล
 col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
-col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4] # ขยายสัดส่วนขวาสุดรองรับ 2 ปุ่ม
+col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
@@ -356,17 +382,17 @@ if st.session_state.user_role == "creator":
             st.markdown("<div style='padding:10px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
             c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns(col_widths_creator)
             
-            c_id.markdown(f"<div class='table-text'>{int(row['id'])}</div>", unsafe_allow_html=True)
-            c_src.markdown(f"<div class='table-text'>{row['source_place'] if pd.notna(row['source_place']) else '-'}</div>", unsafe_allow_html=True)
-            c_no.markdown(f"<div class='table-text'>{row['doc_id_text']}</div>", unsafe_allow_html=True)
-            c_name.markdown(f"<div class='table-text'>{row['fullname']}</div>", unsafe_allow_html=True)
-            c_type.markdown(f"<div class='table-text'>{row['doc_type']}</div>", unsafe_allow_html=True)
-            c_user.markdown(f"<div class='table-text'>{row['creator_name']}</div>", unsafe_allow_html=True)
-            c_date1.markdown(f"<div class='table-text'>{row['created_date_text']}</div>", unsafe_allow_html=True)
+            c_id.write(f"{int(row['id'])}")
+            c_src.write(f"{row['source_place'] if pd.notna(row['source_place']) else '-'}")
+            c_no.write(f"{row['doc_id_text']}")
+            c_name.write(f"{row['fullname']}")
+            c_type.write(f"{row['doc_type']}")
+            c_user.write(f"{row['creator_name']}")
+            c_date1.write(f"{row['created_date_text']}")
             
-            c_admin.markdown(f"<div class='table-text'>{'-' if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name']}</div>", unsafe_allow_html=True)
-            c_date2.markdown(f"<div class='table-text'>{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}</div>", unsafe_allow_html=True)
-            c_comment.markdown(f"<div class='table-text'>{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}</div>", unsafe_allow_html=True)
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name'])
+            c_date2.write(f"{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}")
+            c_comment.write(f"{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}")
             
             if row['check_status'] == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
@@ -476,17 +502,17 @@ else:
             st.markdown("<div style='padding:6px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
             c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_inspector)
             
-            c_id.markdown(f"<div class='table-text'>{int(row['id'])}</div>", unsafe_allow_html=True)
-            c_src.markdown(f"<div class='table-text'>{row['source_place'] if pd.notna(row['source_place']) else '-'}</div>", unsafe_allow_html=True)
-            c_no.markdown(f"<div class='table-text'>{row['doc_id_text']}</div>", unsafe_allow_html=True)
-            c_name.markdown(f"<div class='table-text'>{row['fullname']}</div>", unsafe_allow_html=True)
-            c_type.markdown(f"<div class='table-text'>{row['doc_type']}</div>", unsafe_allow_html=True)
-            c_user.markdown(f"<div class='table-text'>{row['creator_name']}</div>", unsafe_allow_html=True)
-            c_date1.markdown(f"<div class='table-text'>{row['created_date_text']}</div>", unsafe_allow_html=True)
+            c_id.write(f"{int(row['id'])}")
+            c_src.write(f"{row['source_place'] if pd.notna(row['source_place']) else '-'}")
+            c_no.write(f"{row['doc_id_text']}")
+            c_name.write(f"{row['fullname']}")
+            c_type.write(f"{row['doc_type']}")
+            c_user.write(f"{row['creator_name']}")
+            c_date1.write(f"{row['created_date_text']}")
             
-            c_admin.markdown(f"<div class='table-text'>{'-' if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name']}</div>", unsafe_allow_html=True)
-            c_date2.markdown(f"<div class='table-text'>{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}</div>", unsafe_allow_html=True)
-            c_comment.markdown(f"<div class='table-text'>{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}</div>", unsafe_allow_html=True)
+            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name'])
+            c_date2.write(f"{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}")
+            c_comment.write(f"{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}")
             
             current_status = row['check_status']
             if current_status == 'รอตรวจเอกสาร':
@@ -498,12 +524,11 @@ else:
             else:
                 c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
-            # ✨ ส่วนแสดงปุ่มจัดพิมพ์รายงาน PDF ไดนามิกแบบกึ่งกลางสมบูรณ์ 
+            # ส่วนจัดการ: ตรวจ หรือ ดาวน์โหลดเอกสารรายงานภาษาไทยแท้
             if current_status == 'รอตรวจเอกสาร':
                 if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                     show_inspection_modal(int(row['id']))
             else:
-                # เจนโครงสร้าง PDF สตรีมมิ่งลงปุ่ม Download อัตโนมัติ
                 pdf_data = generate_report_pdf(row)
                 c_act.download_button(
                     label="📄 รายงาน",
