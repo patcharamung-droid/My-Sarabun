@@ -88,7 +88,7 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
@@ -109,7 +109,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
-st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต </h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
@@ -304,7 +304,7 @@ def generate_report_pdf_weasy(row_data):
             <div class="signature-box" style="float: right;">
                 ลงชื่อ.......................................................... ผู้ตรวจ<br>
                 ( {row_data['inspector_name']} )<br>
-                ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br>
+                ตำแหน่ง: ผู้ตรวจอนุมัติพิมพ์ใบอนุญาต<br>
                 ลงวันที่: {row_data['inspected_date_text']}
             </div>
         </div>
