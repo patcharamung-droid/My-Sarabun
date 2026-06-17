@@ -255,7 +255,7 @@ if st.session_state.user_role == "creator":
             elif row['check_status'] == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิคำขอก</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิคำขอ</span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
