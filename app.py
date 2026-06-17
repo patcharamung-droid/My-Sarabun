@@ -88,7 +88,7 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
@@ -109,7 +109,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
-st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต </h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต</h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
@@ -140,9 +140,8 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันเจน PDF อัจฉริยะ แปลงโฉม HTML+CSS ด้วยเอนจิน WeasyPrint (สระภาษาไทยคมชัด 100%)
+# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (อัปเดตสไตล์ตัวหนังสือหัวตารางสีขาวหนา)
 def generate_report_pdf_weasy(row_data):
-    # วิ่งไปดึงฟอนต์สารบรรณเวอร์ชันเว็บมาประมวลผล สระและวรรณยุกต์ซ้อนจึงเรียงตัวสวยงาม
     html_content = f"""
     <html>
     <head>
@@ -193,10 +192,11 @@ def generate_report_pdf_weasy(row_data):
                 border-collapse: collapse;
                 margin-bottom: 20px;
             }}
+            /* 🎯 [แก้ไข] บังคับให้ข้อความหัวตาราง (th) เป็นสีขาวเหลืองสว่าง และมีความหนาเด่นชัด */
             .data-table th {{
                 background-color: #800000;
-                color: white;
-                font-weight: bold;
+                color: #ffffff !important;
+                font-weight: bold !important;
                 text-align: left;
                 padding: 10px;
                 border: 1px solid #ccc;
@@ -261,7 +261,6 @@ def generate_report_pdf_weasy(row_data):
             <tbody>
     """
     
-    # วนลูปหยอดแถวเอกสาร 1-6 แบบไดนามิกใน HTML
     for i in range(1, 7):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
@@ -276,7 +275,6 @@ def generate_report_pdf_weasy(row_data):
                 </tr>
             """
             
-    # ต่อท้ายด้วยตารางสรุปมติผลตรวจ และโซนลงชื่อผู้บันทึกคู่ผู้ตรวจสองฝั่ง
     comment_val = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
     html_content += f"""
             </tbody>
@@ -304,20 +302,18 @@ def generate_report_pdf_weasy(row_data):
             <div class="signature-box" style="float: right;">
                 ลงชื่อ.......................................................... ผู้ตรวจ<br>
                 ( {row_data['inspector_name']} )<br>
-                ตำแหน่ง: ผู้ตรวจอนุมัติพิมพ์ใบอนุญาต<br>
+                ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br>
                 ลงวันที่: {row_data['inspected_date_text']}
             </div>
         </div>
     </body>
     </html>
     """
-    
-    # สั่งให้ Weasyprint แปลงบล็อก HTML ตัวนี้ออกมาเป็นไบต์ PDF ส่งกลับไปที่ระบบหลัก
     return HTML(string=html_content).write_pdf()
 
 
-# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ
-col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
+# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ (เพิ่มพื้นที่ขวาสุดของฝั่ง Creator เพื่อปุ่มรายงาน)
+col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 
 # ==========================================
@@ -419,11 +415,12 @@ if st.session_state.user_role == "creator":
                     f"<div style='flex:{col_widths_creator[8]};' class='table-header-text'>วันที่ตรวจ</div>"
                     f"<div style='flex:{col_widths_creator[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
                     f"<div style='flex:{col_widths_creator[10]};' class='table-header-text'>สถานะ</div>"
+                    f"<div style='flex:{col_widths_creator[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:10px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns(col_widths_creator)
+            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_creator)
             
             c_id.write(f"{int(row['id'])}")
             c_src.write(f"{row['source_place'] if pd.notna(row['source_place']) else '-'}")
@@ -437,14 +434,28 @@ if st.session_state.user_role == "creator":
             c_date2.write(f"{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}")
             c_comment.write(f"{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}")
             
-            if row['check_status'] == 'รอตรวจเอกสาร':
+            current_status = row['check_status']
+            if current_status == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
-                c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
-                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
+                c_act.markdown("<div style='color:gray; font-size:13px; font-style:italic; padding-left:5px;'>⏳ รอผลตรวจ</div>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                if current_status == 'อนุมัติพิมพ์ใบอนุญาต':
+                    c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
+                elif current_status == 'ไม่อนุมัติคำขอ':
+                    c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
+                else:
+                    c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                
+                # 🎯 [แก้ไข] เพิ่มปุ่มดาวน์โหลดรายงาน PDF ให้ฝั่ง Creator กดได้เมื่อพิจารณาเสร็จแล้ว
+                pdf_data = generate_report_pdf_weasy(row)
+                c_act.download_button(
+                    label="📄 รายงาน",
+                    data=pdf_data,
+                    file_name=f"Report_License_{row['doc_id_text'].replace('/','_')}.pdf",
+                    mime="application/pdf",
+                    key=f"dl_creator_{int(row['id'])}"
+                )
+                
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
@@ -571,14 +582,13 @@ else:
                 if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                     show_inspection_modal(int(row['id']))
             else:
-                # เรียกใช้เอนจิน WeasyPrint ประมวลผลโค้ดโครงร่าง HTML ออกเป็น PDF
                 pdf_data = generate_report_pdf_weasy(row)
                 c_act.download_button(
                     label="📄 รายงาน",
                     data=pdf_data,
                     file_name=f"Report_License_{row['doc_id_text'].replace('/','_')}.pdf",
                     mime="application/pdf",
-                    key=f"dl_{int(row['id'])}"
+                    key=f"dl_inspector_{int(row['id'])}"
                 )
                 
             st.markdown("</div>", unsafe_allow_html=True)
