@@ -335,7 +335,7 @@ else:
                 exist_comment = data['inspector_comment'] if ('inspector_comment' in data and pd.notna(data['inspector_comment']) and data['inspector_comment'] != "-") else ""
                 inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม")
                 
-                submit_modal = st.form_submit_button("💾 ยืนยันบันทึกผลตรวจ (ล็อกถาวร)")
+                submit_modal = st.form_submit_button("💾 ยืนยันบันทึกผลตรวจ")
                 
             if submit_modal:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
@@ -366,7 +366,7 @@ else:
         with col_title:
             st.markdown("<h3 style='color:#800000; margin:0;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
         with col_ref:
-            if st.button("🔄 รีเฟรชรายการ", key="ref_inspector"):
+            if st.button("🔄 Refresh", key="ref_inspector"):
                 st.cache_data.clear()
                 st.rerun()
         
