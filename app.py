@@ -92,7 +92,7 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
@@ -138,7 +138,7 @@ def load_data():
         df = conn.read(ttl="0d")
         if df.empty: return pd.DataFrame()
         df = df.dropna(subset=['doc_id_text'])
-        required_cols = ['inspector_name', 'inspected_date_text', 'check_status', 'inspector_comment']
+        required_cols = ['source_place', 'inspector_name', 'inspected_date_text', 'check_status', 'inspector_comment']
         for col in required_cols:
             if col not in df.columns: df[col] = "-"
         return df.sort_values(by="id", ascending=False)
@@ -225,13 +225,19 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>สถานะ</div></div></div>", unsafe_allow_html=True)
+        # ✨ แก้ไขหัวตารางฝั่งผู้บันทึก: เพิ่มคอลัมน์ "แหล่งที่มา" เข้าระบบแสดงผลตารางหลัก
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>แหล่งที่มา</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>สถานะ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns([0.5, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3])
+            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns([0.5, 1.2, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3])
             
             c_id.write(f"{int(row['id'])}")
+            
+            # ดึงข้อมูลแหล่งที่มามาพ่นลงตาราง
+            src_val = row['source_place'] if pd.notna(row['source_place']) else "-"
+            c_src.write(f"{src_val}")
+            
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
@@ -270,7 +276,7 @@ else:
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
         st.markdown(f"<h5>📦 ตรวจรับรองคำขอเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
-        st.write(f"**ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} | **วันที่บันทึก:** {data['created_date_text']}")
+        st.write(f"**แหล่งที่มา:** {data['source_place']} | **ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} ({data['created_date_text']})")
         st.write("---")
         
         col_detail, col_form = st.columns([1, 1])
@@ -324,13 +330,19 @@ else:
         else:
             df_filtered = df_all
 
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        # ✨ แก้ไขหัวตารางฝั่งผู้ตรวจ: เพิ่มคอลัมน์ "แหล่งที่มา" เข้าระบบแสดงผลตารางหลัก
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>แหล่งที่มา</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns([0.5, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3, 1.0])
+            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns([0.5, 1.2, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3, 1.0])
             
             c_id.write(f"{int(row['id'])}")
+            
+            # ดึงข้อมูลแหล่งที่มามาพ่นลงตารางของฝั่งผู้ตรวจ
+            src_val = row['source_place'] if pd.notna(row['source_place']) else "-"
+            c_src.write(f"{src_val}")
+            
             c_no.write(f"{row['doc_id_text']}")
             c_name.write(f"{row['fullname']}")
             c_type.write(f"{row['doc_type']}")
