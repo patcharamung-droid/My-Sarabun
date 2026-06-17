@@ -106,7 +106,7 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
@@ -233,7 +233,16 @@ if st.session_state.user_role == "creator":
             st.rerun()
 
     st.write("---")
-    st.markdown("<h3 style='color:#800000;'>📋 รายการเอกสาร</h3>", unsafe_allow_html=True)
+    
+    # ส่วนหัวและปุ่มรีเฟรชสำหรับฝั่ง Creator
+    col_title, col_ref = st.columns([5, 1])
+    with col_title:
+        st.markdown("<h3 style='color:#800000; margin:0;'>📋 รายการเอกสาร</h3>", unsafe_allow_html=True)
+    with col_ref:
+        if st.button("🔄 รีเฟรชรายการ", key="ref_creator"):
+            st.cache_data.clear()
+            st.rerun()
+            
     df_raw = load_data()
     if not df_raw.empty:
         sq = st.text_input("🔍 พิมพ์ค้นหาข้อมูล (เลขหนังสือ / ชื่อผู้ยื่น)")
@@ -296,7 +305,7 @@ else:
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
-        # 🛡️ Guard ระดับหลังบ้าน: ป้องกันกรณีสลับแท็บมากดส่งฟอร์มของรายการที่เคยตรวจไปแล้ว
+        # Guard ระดับหลังบ้าน: ป้องกันกรณีส่งฟอร์มของรายการที่เคยตรวจไปแล้ว
         if data['check_status'] != "รอตรวจเอกสาร":
             st.error("🔒 เอกสารรายการนี้ได้รับการพิจารณาและล็อกสถานะถาวรแล้ว ไม่สามารถแก้ไขได้")
             time_lib.sleep(2)
@@ -319,7 +328,6 @@ else:
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                # ผู้ใช้จะไม่สามารถเลือกกลับไปเป็น "รอตรวจเอกสาร" ได้ บังคับเลือกสถานะสิ้นสุดการตรวจเท่านั้น
                 final_status = st.selectbox("มติสถานะภาพรวม *", ["อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติ *", datetime.now().date())
@@ -352,7 +360,15 @@ else:
         m4.markdown(f"<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; border-left:5px solid gray; text-align:center;'><span style='color:#555;font-weight:bold;'>⚪ ยกเลิกคำขอ</span><br/><h2 style='color:gray;margin:5px;'>{len(df_all[df_all['check_status'] == 'ยกเลิกคำขอ'])}</h2></div>", unsafe_allow_html=True)
         
         st.write("---")
-        st.markdown("<h3 style='color:#800000;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
+        
+        # ส่วนหัวและปุ่มรีเฟรชสำหรับฝั่ง Inspector
+        col_title, col_ref = st.columns([5, 1])
+        with col_title:
+            st.markdown("<h3 style='color:#800000; margin:0;'>📋 รายการข้อมูลเอกสารทุกลำดับชั้นในระบบ</h3>", unsafe_allow_html=True)
+        with col_ref:
+            if st.button("🔄 รีเฟรชรายการ", key="ref_inspector"):
+                st.cache_data.clear()
+                st.rerun()
         
         search_query = st.text_input("🔍 ค้นหารายการ (เลขหนังสือ / ชื่อผู้ยื่น)")
         if search_query:
@@ -401,13 +417,11 @@ else:
             else:
                 c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
-            # ✨ ส่วนการล็อกเงื่อนไขที่ต้องการ (1. ห้ามตรวจซ้ำ / 2. ห้ามแก้ไขสถานะ)
+            # ล็อกเงื่อนไข (1. ห้ามตรวจซ้ำ / 2. ห้ามแก้ไขสถานะ)
             if current_status == 'รอตรวจเอกสาร':
-                # แสดงปุ่ม "🔍 ตรวจ" ปกติเฉพาะรายการที่ยังไม่ได้ตรวจเท่านั้น
                 if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                     show_inspection_modal(int(row['id']))
             else:
-                # ปรับเปลี่ยนช่องการจัดการให้เป็นป้ายข้อความล็อกถาวร เพื่อปิดกั้นการคลิกหรือแก้ไขซ้ำ
                 c_act.markdown("<div style='color:gray; font-size:13px; font-style:italic; padding-left:5px;'>🔒 ตรวจแล้ว</div>", unsafe_allow_html=True)
                 
             st.markdown("</div>", unsafe_allow_html=True)
