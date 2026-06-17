@@ -319,7 +319,7 @@ def generate_report_pdf_weasy(row_data):
             <div class="signature-box" style="float: right;">
                 ลงชื่อ.......................................................... ผู้อนุมัติ<br>
                 ( {row_data['inspector_name']} )<br>
-                ตำแหน่ง: ผู้ตรวจอนุมัติออกใบอนุญาต<br>
+                ตำแหน่ง: ผู้อำนวยการส่วนใบอนุญาต<br>
                 ลงวันที่: {row_data['inspected_date_text']}
             </div>
         </div>
