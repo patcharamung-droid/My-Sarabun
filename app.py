@@ -484,7 +484,7 @@ if st.session_state.user_role == "creator":
 else:
     st.subheader("📝 แบบพิจารณาตรวจสอบรายการเอกสารคำขอและอนุมัติพิมพ์ใบอนุญาต")
     
-    @st.dialog("🖊️ ลงชื่อพิจารณาอนุมัติออกใบอนุญาต", width="large")
+    @st.dialog("🖊️ พิจารณาอนุมัติออกใบอนุญาต", width="large")
     def show_inspection_modal(doc_id):
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
