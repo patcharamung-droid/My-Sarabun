@@ -227,7 +227,7 @@ if st.session_state.user_role == "creator":
             df_filtered = df_raw
 
         # ✨ ปรับโครงสร้างคอลัมน์ฝั่งผู้บันทึก: เพิ่ม ความคิดเห็นผู้ตรวจ เข้าตารางหลักด้วย
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div></div></div>", unsafe_allow_html=True)
+        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>สถานะ</div></div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
