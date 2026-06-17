@@ -113,7 +113,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
-st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ สารบรรณ</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align:center;'>🏛️ ส่วนใบอนุญาต</h2>", unsafe_allow_html=True)
 st.sidebar.write("---")
 st.sidebar.write(f"**ผู้ใช้งาน:** {st.session_state.user_fullname}")
 st.sidebar.write(f"**สิทธิ์ระบบ:** {'📝 เจ้าหน้าที่บันทึก' if st.session_state.user_role == 'creator' else '🔍 ผู้ตรวจอนุมัติ'}")
@@ -296,7 +296,7 @@ else:
                 exist_comment = data['inspector_comment'] if ('inspector_comment' in data and pd.notna(data['inspector_comment']) and data['inspector_comment'] != "-") else ""
                 inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม (ถ้ามี)")
                 
-                submit_modal = st.form_submit_button("💾 ยืนยันผลมติภาพรวม")
+                submit_modal = st.form_submit_button("💾 ยืนยัน")
                 
             if submit_modal:
                 # อัปเดตข้อมูลและบันทึกข้อความความคิดเห็นลงตำแหน่งแถวเดิมใน Google Sheet
