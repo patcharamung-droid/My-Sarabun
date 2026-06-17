@@ -208,12 +208,12 @@ def generate_report_pdf(row_data):
     
     # 1. หัวเอกสารรายงาน
     story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
-    story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบสิทธิ์และเอกสารคำขอใบอนุญาต", subtitle_style))
+    story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต", subtitle_style))
     story.append(Spacer(1, 15))
     
     # 2. รายละเอียดข้อมูลพื้นฐาน
     base_info = [
-        [Paragraph("<b>เลขหนังสือหลัก:</b>", normal_style), Paragraph(str(row_data['doc_id_text']), normal_style), Paragraph("<b>แหล่งที่มาจากระบบ:</b>", normal_style), Paragraph(str(row_data['source_place']), normal_style)],
+        [Paragraph("<b>เลขหนังสือ:</b>", normal_style), Paragraph(str(row_data['doc_id_text']), normal_style), Paragraph("<b>แหล่งที่มา:</b>", normal_style), Paragraph(str(row_data['source_place']), normal_style)],
         [Paragraph("<b>ชื่อ-สกุลผู้ยื่นคำขอ:</b>", normal_style), Paragraph(str(row_data['fullname']), normal_style), Paragraph("<b>ประเภทคำขอ:</b>", normal_style), Paragraph(str(row_data['doc_type']), normal_style)]
     ]
     t_base = Table(base_info, colWidths=[110, 160, 110, 160])
@@ -245,12 +245,12 @@ def generate_report_pdf(row_data):
     story.append(Spacer(1, 15))
     
     # 4. มติสรุปและความคิดเห็นผู้ตรวจ
-    story.append(Paragraph("<b>🔍 สรุปมติและผลพิจารณาภาพรวมระบบ</b>", bold_style))
+    story.append(Paragraph("<b>🔍 สรุปผลพิจารณา</b>", bold_style))
     story.append(Spacer(1, 5))
     
     comment_box = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
     summary_data = [
-        [Paragraph("<b>มติสถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=13, textColor=colors.HexColor('#800000')))],
+        [Paragraph("<b>สถานะ:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=13, textColor=colors.HexColor('#800000')))],
         [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
     ]
     t_sum = Table(summary_data, colWidths=[140, 400])
@@ -261,7 +261,7 @@ def generate_report_pdf(row_data):
     # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
     sign_data = [
         [
-            Paragraph(f"ลงชื่อ.......................................................... ผู้บันทึก<br/>( {row_data['creator_name']} )<br/>ตำแหน่ง: เจ้าหน้าที่บันทึกระบบสารบรรณ<br/>ลงวันที่: {row_data['created_date_text']}", normal_style),
+            Paragraph(f"ลงชื่อ.......................................................... ผู้บันทึก<br/>( {row_data['creator_name']} )<br/>ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ<br/>ลงวันที่: {row_data['created_date_text']}", normal_style),
             Paragraph(f"ลงชื่อ.......................................................... ผู้ตรวจ<br/>( {row_data['inspector_name']} )<br/>ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br/>ลงวันที่: {row_data['inspected_date_text']}", normal_style)
         ]
     ]
