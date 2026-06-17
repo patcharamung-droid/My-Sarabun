@@ -4,52 +4,38 @@ from datetime import datetime
 import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 import io
-import urllib.request # สำหรับดึงฟอนต์ไทยจากอินเทอร์เน็ต
+import urllib.request
 
-# นำเข้าเครื่องมือสร้าง PDF
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+# เปลี่ยนมานำเข้าเครื่องมือสร้าง PDF จาก fpdf2
+from fpdf import FPDF
 
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# ✨ ฟังก์ชันดาวน์โหลดและลงทะเบียนฟอนต์ไทยอัจฉริยะ (เปลี่ยนเป็นฟอนต์ Prompt แก้ปัญหาวรรณยุกต์หาย)
+# ฟังก์ชันดึงฟอนต์ไทยจากอินเทอร์เน็ตมาเตรียมไว้ให้ fpdf2
 @st.cache_resource
-def init_thai_fonts():
+def get_thai_font_bytes():
     try:
-        # 🎯 เปลี่ยนสายลิงก์ไปดึงฟอนต์ "Prompt" จาก Google Fonts โดยตรงเพื่อแก้ปัญหาสระลอยซ้อนทับ
-        regular_url = "https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Regular.ttf"
-        bold_url = "https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Bold.ttf"
-        
+        regular_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
+        bold_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf"
         reg_data = urllib.request.urlopen(regular_url).read()
         bold_data = urllib.request.urlopen(bold_url).read()
-        
-        # ลงทะเบียนใช้งานในระบบ ReportLab ภายใต้คีย์เนมเดิมเพื่อความเสถียร
-        pdfmetrics.registerFont(TTFont('TH-Sarabun', io.BytesIO(reg_data)))
-        pdfmetrics.registerFont(TTFont('TH-Sarabun-Bold', io.BytesIO(bold_data)))
-        return True
+        return reg_data, bold_data
     except Exception as e:
-        st.warning(f"⚠️ ไม่สามารถโหลดฟอนต์ไทยผ่านระบบคลาวด์ได้ชั่วคราว: {e}")
-        return False
+        st.error(f"❌ โหลดฟอนต์ไทยล้มเหลว: {e}")
+        return None, None
 
-# เรียกใช้งานระบบเตรียมฟอนต์ภาษาไทย
-fonts_ready = init_thai_fonts()
+reg_font_bytes, bold_font_bytes = get_thai_font_bytes()
 
 # ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
 st.markdown("""
     <style>
-        /* 1. ซ่อนเครื่องมือ Streamlit Toolbar ทั้งหมด */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
         div[data-testid="stToolbar"] {display: none !important;}
         button[title="View source code"] {display: none !important;}
         
-        /* ปรับแต่งปุ่มหลัก (Primary Buttons) ให้เป็นสีแดงเลือดหมู */
         div.stButton > button:first-child { 
             background-color: #800000; 
             color: white; 
@@ -61,7 +47,6 @@ st.markdown("""
             color: #ffcccc; 
         }
         
-        /* ปรับแต่งกรอบ Form ด้านบน */
         div[data-testid="stForm"] { 
             border: 2px solid #800000 !important; 
             border-radius: 12px !important; 
@@ -74,7 +59,6 @@ st.markdown("""
             font-family: 'Sarabun', sans-serif; 
         }
         
-        /* ปรับแต่ง Sidebar */
         section[data-testid="stSidebar"] { 
             background-color: #4a0000; 
             color: white; 
@@ -83,7 +67,6 @@ st.markdown("""
             color: #ffffff !important; 
         }
 
-        /* 2. บังคับให้บล็อกลายน้ำใน Sidebar อยู่ติดขอบล่างสุดเสมอ */
         .sidebar-watermark {
             position: fixed;
             bottom: 20px;
@@ -93,12 +76,10 @@ st.markdown("""
             color: rgba(255, 255, 255, 0.4) !important; 
             font-size: 13px;
             font-family: 'Sarabun', sans-serif;
-            letter-spacing: 0.5px;
             pointer-events: none;
             z-index: 999;
         }
 
-        /* สไตล์สำหรับตัวอักษรในตาราง */
         .table-text {
             font-size: 14px !important;
             font-family: 'Sarabun', sans-serif;
@@ -114,17 +95,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ฟังก์ชันเชื่อมต่อ Google Sheets ดึงข้อมูลจากคีย์ลับใน Secrets
 def get_gsheet_connection():
     try:
         return st.connection("gsheets", type=GSheetsConnection)
     except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบการตั้งค่าคู่สายใน Secrets")
+        st.error("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบ Secrets")
         st.stop()
 
 conn = get_gsheet_connection()
 
-# บัญชีผู้ใช้งานระบบสารบรรณใบอนุญาต
 USERS = {
     "Patchara.mu": {"password": "431799", "role": "creator", "name": "นายพัชระ มุงคุลคำซาว"},
     "Supachai.t": {"password": "431612", "role": "creator", "name": "นายศุภชัย ไทยโส"},
@@ -168,7 +147,6 @@ st.sidebar.write("---")
 if st.sidebar.button("🚪 ออกจากระบบ"):
     st.session_state.logged_in = False; st.rerun()
 
-# ฝังกล่องลายน้ำไว้ใน Sidebar
 st.sidebar.markdown('<div class="sidebar-watermark">Developed by Patchara.mu</div>', unsafe_allow_html=True)
 
 status_options = ["ผ่าน", "ไม่ผ่าน"]
@@ -190,104 +168,129 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
-# ฟังก์ชันปรับแต่งรายงาน PDF แก้ปัญหาสระลอยแบบถาวรด้วยฟอนต์ใหม่ Prompt
-def generate_report_pdf(row_data):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
-    story = []
+
+# ✨ ฟังก์ชันสร้างฟอร์มรายงาน PDF ด้วยเอนจิน fpdf2 (แก้ปัญหาสระลอยและไม้เอกหายถาวร)
+def generate_report_pdf_fpdf(row_data):
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
     
-    f_normal = 'TH-Sarabun' if fonts_ready else 'Helvetica'
-    f_bold = 'TH-Sarabun-Bold' if fonts_ready else 'Helvetica-Bold'
+    # ดึงไบต์ของฟอนต์มาลงทะเบียนสดในเมมโมรี (ไม่ต้องสร้างไฟล์ลงดิสก์เครื่อง)
+    if reg_font_bytes and bold_font_bytes:
+        pdf.add_font("Sarabun", "", reg_font_bytes)
+        pdf.add_font("Sarabun", "B", bold_font_bytes)
+    else:
+        pdf.add_font("Helvetica", "", "")
+        
+    pdf.add_page()
+    pdf.set_margins(15, 15, 15)
     
-    # กำหนดโครงสร้าง Typography ของฟอนต์ใหม่ให้สมดุล (ปรับลดขนาดฟอนต์ของ Prompt ลงมาที่ 10.5 เพื่อความพอดีของฟอนต์ไม่มีหัว)
-    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=16, leading=22, alignment=1, textColor=colors.HexColor('#800000'))
-    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=11.5, leading=18, alignment=1, textColor=colors.HexColor('#444444'))
+    # 1. ส่วนหัวรายงานที่เป็นทางการ
+    pdf.set_font("Sarabun", "B", 18)
+    pdf.set_text_color(128, 0, 0) # สีแดงเลือดหมูสไตล์พรีเมียม
+    pdf.cell(0, 10, "REPORT: FORM OF APPLICATION LICENSE INSPECTION", ln=True, align="C")
     
-    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=10.5, leading=18) 
-    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=10.5, leading=18)
-    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=10.5, leading=18, textColor=colors.white)
+    pdf.set_font("Sarabun", "", 12)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 8, "รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต", ln=True, align="C")
+    pdf.ln(6)
     
-    # 1. หัวเอกสารรายงาน
-    story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
-    story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต", subtitle_style))
-    story.append(Spacer(1, 15))
+    # 2. ตารางรายละเอียดข้อมูลพื้นฐาน
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.set_text_color(0, 0, 0)
     
-    # 2. รายละเอียดข้อมูลพื้นฐาน
-    base_info = [
-        [Paragraph("<b>เลขหนังสือ:</b>", normal_style), Paragraph(str(row_data['doc_id_text']), normal_style), Paragraph("<b>แหล่งที่มา:</b>", normal_style), Paragraph(str(row_data['source_place']), normal_style)],
-        [Paragraph("<b>ชื่อ-สกุลผู้ยื่นคำขอ:</b>", normal_style), Paragraph(str(row_data['fullname']), normal_style), Paragraph("<b>ประเภทคำขอ:</b>", normal_style), Paragraph(str(row_data['doc_type']), normal_style)]
-    ]
-    t_base = Table(base_info, colWidths=[110, 160, 110, 160])
-    t_base.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), 
-        ('TOPPADDING', (0,0), (-1,-1), 8),    
-        ('BOTTOMPADDING', (0,0), (-1,-1), 8)
-    ]))
-    story.append(t_base)
-    story.append(Spacer(1, 15))
+    # ข้อมูลบรรทัดที่ 1
+    pdf.cell(30, 8, "เลขหนังสือ:", ln=False)
+    pdf.set_font("Sarabun", "", 11)
+    pdf.cell(60, 8, str(row_data['doc_id_text']), ln=False)
     
-    # 3. ตารางรายงานผลการตรวจเช็คเอกสารแนบ 1-6
-    story.append(Paragraph("<b>📋 รายละเอียดและสถานะเอกสารแนบ (Attachment Checklist)</b>", bold_style))
-    story.append(Spacer(1, 5))
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.cell(30, 8, "แหล่งที่มา:", ln=False)
+    pdf.set_font("Sarabun", "", 11)
+    pdf.cell(60, 8, str(row_data['source_place']), ln=True)
     
-    checklist_data = [[Paragraph("<b>ลำดับเอกสาร</b>", header_table_style), Paragraph("<b>สถานะผลตรวจ</b>", header_table_style), Paragraph("<b>รายละเอียดหมายเหตุเพิ่มเติม</b>", header_table_style)]]
+    # ข้อมูลบรรทัดที่ 2
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.cell(30, 8, "ชื่อผู้ยื่นคำขอ:", ln=False)
+    pdf.set_font("Sarabun", "", 11)
+    pdf.cell(60, 8, str(row_data['fullname']), ln=False)
+    
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.cell(30, 8, "ประเภทคำขอ:", ln=False)
+    pdf.set_font("Sarabun", "", 11)
+    pdf.cell(60, 8, str(row_data['doc_type']), ln=True)
+    pdf.ln(6)
+    
+    # 3. ส่วนหัวตาราง Checklist เอกสารแนบ
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.cell(0, 8, "📋 รายละเอียดและสถานะเอกสารแนบ (Attachment Checklist)", ln=True)
+    
+    # หัวตาราง (Header)
+    pdf.set_fill_color(128, 0, 0)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(40, 9, " ลำดับเอกสาร", border=1, ln=False, fill=True)
+    pdf.cell(35, 9, " สถานะผลตรวจ", border=1, ln=False, fill=True)
+    pdf.cell(105, 9, " รายละเอียดหมายเหตุเพิ่มเติม", border=1, ln=True, fill=True)
+    
+    # ข้อมูลตาราง (Data rows)
+    pdf.set_text_color(0, 0, 0)
     for i in range(1, 7):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
         if st_key in row_data and row_data[st_key] != "ไม่ได้ระบุ":
-            status_text = f"<font color='green'><b>{row_data[st_key]}</b></font>" if row_data[st_key] == "ผ่าน" else f"<font color='red'><b>{row_data[st_key]}</b></font>"
-            note_text = str(row_data[nt_key]) if (pd.notna(row_data[nt_key]) and row_data[nt_key] != "") else "-"
-            checklist_data.append([Paragraph(f"เอกสารแนบลำดับที่ {i}", normal_style), Paragraph(status_text, normal_style), Paragraph(note_text, normal_style)])
+            pdf.set_font("Sarabun", "", 11)
+            pdf.cell(40, 9, f" เอกสารแนบลำดับที่ {i}", border=1, ln=False)
             
-    t_check = Table(checklist_data, colWidths=[130, 110, 300])
-    t_check.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#800000')),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 12),    # จัดพื้นที่ขอบในตารางให้กว้างขวาง สระลอยไม่ติดเพดานกรอบ
-        ('BOTTOMPADDING', (0,0), (-1,-1), 12), 
-    ]))
-    story.append(t_check)
-    story.append(Spacer(1, 15))
+            # แยกสีสถานะ ผ่าน (เขียว) / ไม่ผ่าน (แดง) เพื่อความชัดเจน
+            if row_data[st_key] == "ผ่าน":
+                pdf.set_text_color(0, 128, 0)
+                pdf.set_font("Sarabun", "B", 11)
+            else:
+                pdf.set_text_color(200, 0, 0)
+                pdf.set_font("Sarabun", "B", 11)
+                
+            pdf.cell(35, 9, f" {row_data[st_key]}", border=1, ln=False)
+            
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Sarabun", "", 11)
+            note_val = str(row_data[nt_key]) if (pd.notna(row_data[nt_key]) and row_data[nt_key] != "") else "-"
+            pdf.cell(105, 9, f" {note_val}", border=1, ln=True)
+            
+    pdf.ln(6)
     
-    # 4. มติสรุปและความคิดเห็นผู้ตรวจ
-    story.append(Paragraph("<b>🔍 สรุปผลพิจารณา</b>", bold_style))
-    story.append(Spacer(1, 5))
+    # 4. ตารางมติสรุปและความคิดเห็นเพิ่มเติม
+    pdf.set_font("Sarabun", "B", 11)
+    pdf.cell(0, 8, "🔍 สรุปผลพิจารณาจากผู้ตรวจอนุมัติ", ln=True)
     
-    comment_box = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
-    summary_data = [
-        [Paragraph("<b>สถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=10.5, leading=18, textColor=colors.HexColor('#800000')))],
-        [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
-    ]
-    t_sum = Table(summary_data, colWidths=[140, 400])
-    t_sum.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e0e0e0')), 
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 12),    
-        ('BOTTOMPADDING', (0,0), (-1,-1), 12), 
-    ]))
-    story.append(t_sum)
-    story.append(Spacer(1, 40)) 
+    pdf.cell(40, 9, " สถานะภาพรวม:", border=1, ln=False, fill=False)
+    pdf.set_text_color(128, 0, 0)
+    pdf.cell(140, 9, f" {row_data['check_status']}", border=1, ln=True)
     
-    # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
-    sign_data = [
-        [
-            Paragraph(f"ลงชื่อ.......................................................... ผู้บันทึก<br/>( {row_data['creator_name']} )<br/>ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ<br/>ลงวันที่: {row_data['created_date_text']}", normal_style),
-            Paragraph(f"ลงชื่อ.......................................................... ผู้ตรวจ<br/>( {row_data['inspector_name']} )<br/>ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br/>ลงวันที่: {row_data['inspected_date_text']}", normal_style)
-        ]
-    ]
-    t_sign = Table(sign_data, colWidths=[270, 270])
-    t_sign.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'), 
-        ('VALIGN', (0,0), (-1,-1), 'TOP'), 
-        ('TOPPADDING', (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10)
-    ]))
-    story.append(t_sign)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(40, 14, " ความคิดเห็นเพิ่มเติม:", border=1, ln=False)
+    comment_val = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
+    pdf.set_font("Sarabun", "", 11)
+    pdf.cell(140, 14, f" {comment_val}", border=1, ln=True)
+    pdf.ln(25) # เผื่อพื้นที่ดิ่งลงมาสำหรับกล่องเซ็นชื่อกึ่งกลางคู่
     
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+    # 5. โซนลงนามสองฝั่งสมดุล ซ้าย-ขวา ลายเซ็นและไม้เอกคมชัดแน่นอน
+    current_y = pdf.get_y()
+    
+    # ฝั่งซ้าย - ผู้บันทึก
+    pdf.set_xy(15, current_y)
+    pdf.cell(85, 6, "ลงชื่อ.......................................................... ผู้บันทึก", ln=True, align="C")
+    pdf.cell(85, 6, f"( {row_data['creator_name']} )", ln=True, align="C")
+    pdf.cell(85, 6, "ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ", ln=True, align="C")
+    pdf.cell(85, 6, f"ลงวันที่: {row_data['created_date_text']}", ln=True, align="C")
+    
+    # ฝั่งขวา - ผู้ตรวจ
+    pdf.set_xy(110, current_y)
+    pdf.cell(85, 6, "ลงชื่อ.......................................................... ผู้ตรวจ", ln=True, align="C")
+    pdf.cell(85, 6, f"( {row_data['inspector_name']} )", ln=True, align="C")
+    pdf.cell(85, 6, "ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ", ln=True, align="C")
+    pdf.cell(85, 6, f"ลงวันที่: {row_data['inspected_date_text']}", ln=True, align="C")
+    
+    # เอาต์พุตส่งค่ากลับเป็นไบต์สตรีมเพื่อให้ปุ่ม Download รับไปพ่นต่อได้ทันที
+    return bytes(pdf.output())
+
 
 # อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล
 col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
@@ -306,7 +309,7 @@ if st.session_state.user_role == "creator":
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.selectbox("แหล่งที่มา *", ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"])
-            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="ระжуเลขหนังสือ")
+            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="ระบุเลขหนังสือ")
             creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
@@ -540,12 +543,12 @@ else:
             else:
                 c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
-            # ส่วนจัดการ: ตรวจ หรือ ดาวน์โหลดเอกสารรายงานภาษาไทยแท้
             if current_status == 'รอตรวจเอกสาร':
                 if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                     show_inspection_modal(int(row['id']))
             else:
-                pdf_data = generate_report_pdf(row)
+                # เรียกใช้เอนจิน FPDF2 เจนค่าสตรีมไบต์สดๆ ส่งต่อเข้าปุ่มได้ทันที
+                pdf_data = generate_report_pdf_fpdf(row)
                 c_act.download_button(
                     label="📄 รายงาน",
                     data=pdf_data,
