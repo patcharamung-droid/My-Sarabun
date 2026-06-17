@@ -65,6 +65,20 @@ st.markdown("""
             pointer-events: none;
             z-index: 999;
         }
+
+        /* สไตล์พิเศษสำหรับตัวอักษรในตารางให้สมดุล */
+        .table-text {
+            font-size: 14px !important;
+            font-family: 'Sarabun', sans-serif;
+            color: #333333;
+            word-break: break-word;
+        }
+        .table-header-text {
+            font-size: 15px !important;
+            font-family: 'Sarabun', sans-serif;
+            color: white;
+            font-weight: bold;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -144,6 +158,10 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
+# อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล (ตารางฝั่ง Creator และ Inspector จะใช้สัดส่วนเดียวกัน)
+# [ID, แหล่งที่มา, เลขหนังสือ, ชื่อผู้ยื่น, ประเภทงาน, ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ, ความคิดเห็น, สถานะ, (การจัดการ-ถ้ามี)]
+col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
+col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 0.8]
 
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
@@ -225,40 +243,45 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        # ✨ แก้ไขหัวตารางฝั่งผู้บันทึก: เพิ่มคอลัมน์ "แหล่งที่มา" เข้าระบบแสดงผลตารางหลัก
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>แหล่งที่มา</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>สถานะ</div></div></div>", unsafe_allow_html=True)
+        # หัวตารางฝั่งผู้บันทึก (ปรับสัดส่วนความกว้างและขนาดตัวอักษร)
+        st.markdown("<div style='background-color:#800000; padding:12px 10px; border-radius:8px 8px 0px 0px;'><div style='display:flex; align-items:center; text-align:left;'>"
+                    f"<div style='flex:{col_widths_creator[0]};' class='table-header-text'>ID</div>"
+                    f"<div style='flex:{col_widths_creator[1]};' class='table-header-text'>แหล่งที่มา</div>"
+                    f"<div style='flex:{col_widths_creator[2]};' class='table-header-text'>เลขหนังสือ</div>"
+                    f"<div style='flex:{col_widths_creator[3]};' class='table-header-text'>ชื่อผู้ยื่น</div>"
+                    f"<div style='flex:{col_widths_creator[4]};' class='table-header-text'>ประเภทงาน</div>"
+                    f"<div style='flex:{col_widths_creator[5]};' class='table-header-text'>ผู้บันทึก</div>"
+                    f"<div style='flex:{col_widths_creator[6]};' class='table-header-text'>วันที่บันทึก</div>"
+                    f"<div style='flex:{col_widths_creator[7]};' class='table-header-text'>ผู้ตรวจ</div>"
+                    f"<div style='flex:{col_widths_creator[8]};' class='table-header-text'>วันที่ตรวจ</div>"
+                    f"<div style='flex:{col_widths_creator[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
+                    f"<div style='flex:{col_widths_creator[10]};' class='table-header-text'>สถานะ</div>"
+                    "</div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
-            st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns([0.5, 1.2, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3])
+            st.markdown("<div style='padding:10px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
+            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status = st.columns(col_widths_creator)
             
-            c_id.write(f"{int(row['id'])}")
+            c_id.markdown(f"<div class='table-text'>{int(row['id'])}</div>", unsafe_allow_html=True)
+            c_src.markdown(f"<div class='table-text'>{row['source_place'] if pd.notna(row['source_place']) else '-'}</div>", unsafe_allow_html=True)
+            c_no.markdown(f"<div class='table-text'>{row['doc_id_text']}</div>", unsafe_allow_html=True)
+            c_name.markdown(f"<div class='table-text'>{row['fullname']}</div>", unsafe_allow_html=True)
+            c_type.markdown(f"<div class='table-text'>{row['doc_type']}</div>", unsafe_allow_html=True)
+            c_user.markdown(f"<div class='table-text'>{row['creator_name']}</div>", unsafe_allow_html=True)
+            c_date1.markdown(f"<div class='table-text'>{row['created_date_text']}</div>", unsafe_allow_html=True)
             
-            # ดึงข้อมูลแหล่งที่มามาพ่นลงตาราง
-            src_val = row['source_place'] if pd.notna(row['source_place']) else "-"
-            c_src.write(f"{src_val}")
-            
-            c_no.write(f"{row['doc_id_text']}")
-            c_name.write(f"{row['fullname']}")
-            c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']}")
-            c_date1.write(f"{row['created_date_text']}")
-            
-            date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
-            c_date2.write(f"{date_ins}")
-            
-            comment_val = row['inspector_comment'] if pd.notna(row['inspector_comment']) else "-"
-            c_comment.write(f"{comment_val}")
+            c_admin.markdown(f"<div class='table-text'>{'-' if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name']}</div>", unsafe_allow_html=True)
+            c_date2.markdown(f"<div class='table-text'>{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}</div>", unsafe_allow_html=True)
+            c_comment.markdown(f"<div class='table-text'>{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}</div>", unsafe_allow_html=True)
             
             if row['check_status'] == 'รอตรวจเอกสาร':
-                c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+                c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
-                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'ไม่อนุมัติคำขอ':
-                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("💡 ยังไม่มีแฟ้มข้อมูลบันทึกสะสมในระบบ")
@@ -330,41 +353,48 @@ else:
         else:
             df_filtered = df_all
 
-        # ✨ แก้ไขหัวตารางฝั่งผู้ตรวจ: เพิ่มคอลัมน์ "แหล่งที่มา" เข้าระบบแสดงผลตารางหลัก
-        st.markdown("<div style='background-color:#800000; padding:10px; border-radius:8px 8px 0px 0px; color:white; font-weight:bold;'><div style='display:flex;'><div style='flex:0.5;'>ID</div><div style='flex:1.2;'>แหล่งที่มา</div><div style='flex:1.1;'>เลขหนังสือ</div><div style='flex:1.2;'>ชื่อผู้ยื่น</div><div style='flex:1.2;'>ประเภทงาน</div><div style='flex:1.2;'>ผู้บันทึก</div><div style='flex:1.0;'>วันที่บันทึก</div><div style='flex:1.2;'>ผู้ตรวจ</div><div style='flex:1.0;'>วันที่ตรวจ</div><div style='flex:1.5;'>ความคิดเห็นผู้ตรวจ</div><div style='flex:1.3;'>Ref สถานะ</div><div style='flex:1.0;'>การจัดการ</div></div></div>", unsafe_allow_html=True)
+        # หัวตารางฝั่งผู้ตรวจ (เพิ่มคอลัมน์ "การจัดการ" ขนาดตัวอักษรและสัดส่วนที่ปรับสมบูรณ์แล้ว)
+        st.markdown("<div style='background-color:#800000; padding:12px 10px; border-radius:8px 8px 0px 0px;'><div style='display:flex; align-items:center; text-align:left;'>"
+                    f"<div style='flex:{col_widths_inspector[0]};' class='table-header-text'>ID</div>"
+                    f"<div style='flex:{col_widths_inspector[1]};' class='table-header-text'>แหล่งที่มา</div>"
+                    f"<div style='flex:{col_widths_inspector[2]};' class='table-header-text'>เลขหนังสือ</div>"
+                    f"<div style='flex:{col_widths_inspector[3]};' class='table-header-text'>ชื่อผู้ยื่น</div>"
+                    f"<div style='flex:{col_widths_inspector[4]};' class='table-header-text'>ประเภทงาน</div>"
+                    f"<div style='flex:{col_widths_inspector[5]};' class='table-header-text'>ผู้บันทึก</div>"
+                    f"<div style='flex:{col_widths_inspector[6]};' class='table-header-text'>วันที่บันทึก</div>"
+                    f"<div style='flex:{col_widths_inspector[7]};' class='table-header-text'>ผู้ตรวจ</div>"
+                    f"<div style='flex:{col_widths_inspector[8]};' class='table-header-text'>วันที่ตรวจ</div>"
+                    f"<div style='flex:{col_widths_inspector[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
+                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>Ref สถานะ</div>"
+                    f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
+                    "</div></div>", unsafe_allow_html=True)
 
         for _, row in df_filtered.iterrows():
-            st.markdown("<div style='padding:12px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
-            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns([0.5, 1.2, 1.1, 1.2, 1.2, 1.2, 1.0, 1.2, 1.0, 1.5, 1.3, 1.0])
+            st.markdown("<div style='padding:6px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
+            c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_inspector)
             
-            c_id.write(f"{int(row['id'])}")
+            c_id.markdown(f"<div class='table-text'>{int(row['id'])}</div>", unsafe_allow_html=True)
+            c_src.markdown(f"<div class='table-text'>{row['source_place'] if pd.notna(row['source_place']) else '-'}</div>", unsafe_allow_html=True)
+            c_no.markdown(f"<div class='table-text'>{row['doc_id_text']}</div>", unsafe_allow_html=True)
+            c_name.markdown(f"<div class='table-text'>{row['fullname']}</div>", unsafe_allow_html=True)
+            c_type.markdown(f"<div class='table-text'>{row['doc_type']}</div>", unsafe_allow_html=True)
+            c_user.markdown(f"<div class='table-text'>{row['creator_name']}</div>", unsafe_allow_html=True)
+            c_date1.markdown(f"<div class='table-text'>{row['created_date_text']}</div>", unsafe_allow_html=True)
             
-            # ดึงข้อมูลแหล่งที่มามาพ่นลงตารางของฝั่งผู้ตรวจ
-            src_val = row['source_place'] if pd.notna(row['source_place']) else "-"
-            c_src.write(f"{src_val}")
-            
-            c_no.write(f"{row['doc_id_text']}")
-            c_name.write(f"{row['fullname']}")
-            c_type.write(f"{row['doc_type']}")
-            c_user.write(f"{row['creator_name']}")
-            c_date1.write(f"{row['created_date_text']}")
-            
-            date_ins = row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else "-"
-            c_admin.write("-" if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else f"{row['inspector_name']}")
-            c_date2.write(f"{date_ins}")
-            
-            comment_val = row['inspector_comment'] if pd.notna(row['inspector_comment']) else "-"
-            c_comment.write(f"{comment_val}")
+            c_admin.markdown(f"<div class='table-text'>{'-' if row['inspector_name'] == 'ยังไม่ได้ตรวจ' else row['inspector_name']}</div>", unsafe_allow_html=True)
+            c_date2.markdown(f"<div class='table-text'>{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}</div>", unsafe_allow_html=True)
+            c_comment.markdown(f"<div class='table-text'>{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}</div>", unsafe_allow_html=True)
             
             if row['check_status'] == 'รอตรวจเอกสาร':
-                c_status.markdown("⏳ <span style='color:orange; font-weight:bold;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
+                c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
-                c_status.markdown("🟢 <span style='color:green; font-weight:bold;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
+                c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
             elif row['check_status'] == 'ไม่อนุมัติคำขอ':
-                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
-                c_status.markdown("⚪ <span style='color:gray;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
+                c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
+            # ปุ่มตรวจจะถูกจัดวางอย่างกึ่งกลางสมดุลร่วมกับแถวข้อมูล
             if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                 show_inspection_modal(int(row['id']))
             st.markdown("</div>", unsafe_allow_html=True)
