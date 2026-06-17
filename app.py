@@ -17,18 +17,18 @@ from reportlab.pdfbase.ttfonts import TTFont
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# ✨ ฟังก์ชันดาวน์โหลดและลงทะเบียนฟอนต์ไทยอัจฉริยะ (แก้ปัญหาตาราง ■อนุมัติ และสระลอยหาย)
+# ✨ ฟังก์ชันดาวน์โหลดและลงทะเบียนฟอนต์ไทยอัจฉริยะ (เปลี่ยนเป็นฟอนต์ Prompt แก้ปัญหาวรรณยุกต์หาย)
 @st.cache_resource
 def init_thai_fonts():
     try:
-        # ดึงฟอนต์ "Sarabun" เวอร์ชันปกติและตัวหนาตรงจาก Google Fonts
-        regular_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
-        bold_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf"
+        # 🎯 เปลี่ยนสายลิงก์ไปดึงฟอนต์ "Prompt" จาก Google Fonts โดยตรงเพื่อแก้ปัญหาสระลอยซ้อนทับ
+        regular_url = "https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Regular.ttf"
+        bold_url = "https://github.com/google/fonts/raw/main/ofl/prompt/Prompt-Bold.ttf"
         
         reg_data = urllib.request.urlopen(regular_url).read()
         bold_data = urllib.request.urlopen(bold_url).read()
         
-        # ลงทะเบียนเข้าสู่ระบบดึงฟอนต์ของ ReportLab
+        # ลงทะเบียนใช้งานในระบบ ReportLab ภายใต้คีย์เนมเดิมเพื่อความเสถียร
         pdfmetrics.registerFont(TTFont('TH-Sarabun', io.BytesIO(reg_data)))
         pdfmetrics.registerFont(TTFont('TH-Sarabun-Bold', io.BytesIO(bold_data)))
         return True
@@ -190,7 +190,7 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
-# ฟังก์ชันปรับแต่งรายงาน PDF แก้ปัญหาเรื่องไม้เอกไม้โทสระลอยโดนบังถาวร
+# ฟังก์ชันปรับแต่งรายงาน PDF แก้ปัญหาสระลอยแบบถาวรด้วยฟอนต์ใหม่ Prompt
 def generate_report_pdf(row_data):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
@@ -199,18 +199,18 @@ def generate_report_pdf(row_data):
     f_normal = 'TH-Sarabun' if fonts_ready else 'Helvetica'
     f_bold = 'TH-Sarabun-Bold' if fonts_ready else 'Helvetica-Bold'
     
-    # 🎨 [แก้ไขด่วนตามบรีฟ] ปรับลดขนาดตัวอักษรลงมาที่ระดับ 11.5pt เพื่อลดความสูงสระ และให้มีสเปซเหลือเฟือหลบไม้เอกหาย
-    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=18, leading=24, alignment=1, textColor=colors.HexColor('#800000'))
-    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=12.5, leading=18, alignment=1, textColor=colors.HexColor('#444444'))
+    # กำหนดโครงสร้าง Typography ของฟอนต์ใหม่ให้สมดุล (ปรับลดขนาดฟอนต์ของ Prompt ลงมาที่ 10.5 เพื่อความพอดีของฟอนต์ไม่มีหัว)
+    title_style = ParagraphStyle('TitleStyle', fontName=f_bold, fontSize=16, leading=22, alignment=1, textColor=colors.HexColor('#800000'))
+    subtitle_style = ParagraphStyle('SubStyle', fontName=f_normal, fontSize=11.5, leading=18, alignment=1, textColor=colors.HexColor('#444444'))
     
-    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=11.5, leading=20) 
-    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=11.5, leading=20)
-    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=11.5, leading=20, textColor=colors.white)
+    normal_style = ParagraphStyle('NormalStyle', fontName=f_normal, fontSize=10.5, leading=18) 
+    bold_style = ParagraphStyle('BoldStyle', fontName=f_bold, fontSize=10.5, leading=18)
+    header_table_style = ParagraphStyle('HeaderTableStyle', fontName=f_bold, fontSize=10.5, leading=18, textColor=colors.white)
     
     # 1. หัวเอกสารรายงาน
     story.append(Paragraph("<b>REPORT: FORM OF APPLICATION LICENSE INSPECTION</b>", title_style))
     story.append(Paragraph("รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต", subtitle_style))
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 15))
     
     # 2. รายละเอียดข้อมูลพื้นฐาน
     base_info = [
@@ -220,8 +220,8 @@ def generate_report_pdf(row_data):
     t_base = Table(base_info, colWidths=[110, 160, 110, 160])
     t_base.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), 
-        ('TOPPADDING', (0,0), (-1,-1), 10),    
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10)
+        ('TOPPADDING', (0,0), (-1,-1), 8),    
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8)
     ]))
     story.append(t_base)
     story.append(Spacer(1, 15))
@@ -244,8 +244,8 @@ def generate_report_pdf(row_data):
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#800000')),
         ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 14),    # ขยายพื้นที่ขอบบนเป็น 14 เพื่อหนีห่างไม้เอกจากการครอบงำของขอบตาราง
-        ('BOTTOMPADDING', (0,0), (-1,-1), 14), 
+        ('TOPPADDING', (0,0), (-1,-1), 12),    # จัดพื้นที่ขอบในตารางให้กว้างขวาง สระลอยไม่ติดเพดานกรอบ
+        ('BOTTOMPADDING', (0,0), (-1,-1), 12), 
     ]))
     story.append(t_check)
     story.append(Spacer(1, 15))
@@ -256,18 +256,18 @@ def generate_report_pdf(row_data):
     
     comment_box = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
     summary_data = [
-        [Paragraph("<b>สถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=11.5, leading=20, textColor=colors.HexColor('#800000')))],
+        [Paragraph("<b>สถานะภาพรวม:</b>", normal_style), Paragraph(f"<b>{row_data['check_status']}</b>", ParagraphStyle('Status', fontName=f_bold, fontSize=10.5, leading=18, textColor=colors.HexColor('#800000')))],
         [Paragraph("<b>ความคิดเห็นผู้ตรวจเพิ่มเติม:</b>", normal_style), Paragraph(comment_box, normal_style)]
     ]
     t_sum = Table(summary_data, colWidths=[140, 400])
     t_sum.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e0e0e0')), 
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 14),    
-        ('BOTTOMPADDING', (0,0), (-1,-1), 14), 
+        ('TOPPADDING', (0,0), (-1,-1), 12),    
+        ('BOTTOMPADDING', (0,0), (-1,-1), 12), 
     ]))
     story.append(t_sum)
-    story.append(Spacer(1, 45)) 
+    story.append(Spacer(1, 40)) 
     
     # 5. โซนลงนามพยาน/เจ้าหน้าที่ พร้อมลายเซ็นและลงวันที่
     sign_data = [
@@ -280,8 +280,8 @@ def generate_report_pdf(row_data):
     t_sign.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'CENTER'), 
         ('VALIGN', (0,0), (-1,-1), 'TOP'), 
-        ('TOPPADDING', (0,0), (-1,-1), 12),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 12)
+        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10)
     ]))
     story.append(t_sign)
     
@@ -306,7 +306,7 @@ if st.session_state.user_role == "creator":
         col1, col2 = st.columns(2)
         with col1:
             source_place = st.selectbox("แหล่งที่มา *", ["ASMS", "NBTC Service Portal", "ONE STOP SERVICE"])
-            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="ระบุเลขหนังสือ")
+            doc_id_text = st.text_input("เลขหนังสือ *", placeholder="ระжуเลขหนังสือ")
             creator_name = st.text_input("ผู้บันทึก", value=st.session_state.user_fullname, disabled=True)
         with col2:
             fullname = st.text_input("ชื่อ-สกุลผู้ยื่นคำขอ *", placeholder="ระบุชื่อผู้ยื่นคำขอ")
