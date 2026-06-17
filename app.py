@@ -365,7 +365,7 @@ else:
                     f"<div style='flex:{col_widths_inspector[7]};' class='table-header-text'>ผู้ตรวจ</div>"
                     f"<div style='flex:{col_widths_inspector[8]};' class='table-header-text'>วันที่ตรวจ</div>"
                     f"<div style='flex:{col_widths_inspector[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
-                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>Ref สถานะ</div>"
+                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>สถานะ</div>"
                     f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
