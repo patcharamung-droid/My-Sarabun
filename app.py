@@ -241,6 +241,7 @@ def generate_report_pdf_weasy(row_data):
                 text-align: center;
                 display: inline-block;
                 vertical-align: top;
+                line-height: 2.0;
             }}
         </style>
     </head>
@@ -326,9 +327,9 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ
-col_widths_creator = [0.4, 1.1, 1.1, 1.5, 1.3, 1.7, 0.9, 1.5, 0.9, 1.6, 1.1, 1.4]
-col_widths_inspector = [0.4, 1.1, 1.1, 1.5, 1.3, 1.7, 0.9, 1.5, 0.9, 1.6, 1.1, 1.4]
+# 🎯 [แก้ไขสัดส่วนใหม่] เกลี่ยสัดส่วนคอลัมน์ตารางให้ชื่อผู้ยื่น (1.5) ผู้บันทึก (1.5) และผู้ตรวจ (1.5) มีพื้นที่กว้างพอดี ไม่ตัดข้อความ
+col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
+col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.2, 1.5, 0.9, 1.5, 0.9, 1.5, 1.1, 1.3]
 
 # ==========================================
 # 🟢 หน้าจอเฉพาะสำหรับ: 📝 ผู้บันทึกข้อมูล (role == 'creator')
@@ -566,7 +567,6 @@ else:
                     f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
-        # 🔥 [แก้ไขสำเร็จ] แสดงคำสั่งสร้างและหั่นตารางฝั่งผู้ตรวจครบถ้วน 100% ไร้เครื่องหมาย Ellipsis ซ่อนเร้น
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:6px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
             c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_inspector)
