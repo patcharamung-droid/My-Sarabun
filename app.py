@@ -158,8 +158,7 @@ def load_data():
         return df.sort_values(by="id", ascending=False)
     except: return pd.DataFrame()
 
-# อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล (ตารางฝั่ง Creator และ Inspector จะใช้สัดส่วนเดียวกัน)
-# [ID, แหล่งที่มา, เลขหนังสือ, ชื่อผู้ยื่น, ประเภทงาน, ผู้บันทึก, วันที่บันทึก, ผู้ตรวจ, วันที่ตรวจ, ความคิดเห็น, สถานะ, (การจัดการ-ถ้ามี)]
+# อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล
 col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
 col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 0.8]
 
@@ -243,7 +242,6 @@ if st.session_state.user_role == "creator":
         else:
             df_filtered = df_raw
 
-        # หัวตารางฝั่งผู้บันทึก (ปรับสัดส่วนความกว้างและขนาดตัวอักษร)
         st.markdown("<div style='background-color:#800000; padding:12px 10px; border-radius:8px 8px 0px 0px;'><div style='display:flex; align-items:center; text-align:left;'>"
                     f"<div style='flex:{col_widths_creator[0]};' class='table-header-text'>ID</div>"
                     f"<div style='flex:{col_widths_creator[1]};' class='table-header-text'>แหล่งที่มา</div>"
@@ -298,6 +296,13 @@ else:
         df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
         data = df_existing[df_existing['id'] == doc_id].iloc[0]
         
+        # 🛡️ Guard ระดับหลังบ้าน: ป้องกันกรณีสลับแท็บมากดส่งฟอร์มของรายการที่เคยตรวจไปแล้ว
+        if data['check_status'] != "รอตรวจเอกสาร":
+            st.error("🔒 เอกสารรายการนี้ได้รับการพิจารณาและล็อกสถานะถาวรแล้ว ไม่สามารถแก้ไขได้")
+            time_lib.sleep(2)
+            st.rerun()
+            return
+
         st.markdown(f"<h5>📦 ตรวจรับรองคำขอเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
         st.write(f"**แหล่งที่มา:** {data['source_place']} | **ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้บันทึก:** {data['creator_name']} ({data['created_date_text']})")
         st.write("---")
@@ -314,14 +319,15 @@ else:
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("มติสถานะภาพรวม *", ["รอตรวจเอกสาร", "อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
+                # ผู้ใช้จะไม่สามารถเลือกกลับไปเป็น "รอตรวจเอกสาร" ได้ บังคับเลือกสถานะสิ้นสุดการตรวจเท่านั้น
+                final_status = st.selectbox("มติสถานะภาพรวม *", ["อนุมัติพิมพ์ใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
                 inspector_input = st.text_input("ผู้ลงนามตรวจสอบ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติ *", datetime.now().date())
                 
                 exist_comment = data['inspector_comment'] if ('inspector_comment' in data and pd.notna(data['inspector_comment']) and data['inspector_comment'] != "-") else ""
-                inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม (ถ้ามี)")
+                inspector_comment_input = st.text_area("ความคิดเห็นผู้ตรวจ", value=exist_comment, placeholder="ระบุเหตุผล ข้อเสนอแนะ หรือคำสั่งการเพิ่มเติม")
                 
-                submit_modal = st.form_submit_button("💾 ยืนยัน")
+                submit_modal = st.form_submit_button("💾 ยืนยันบันทึกผลตรวจ (ล็อกถาวร)")
                 
             if submit_modal:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_name'] = inspector_input
@@ -330,7 +336,8 @@ else:
                 df_existing.loc[df_existing['id'] == doc_id, 'inspector_comment'] = inspector_comment_input if inspector_comment_input else "-"
                 
                 conn.update(data=df_existing)
-                st.success("🎉 บันทึกผลตรวจและเพิ่มความคิดเห็นลง Google Sheet สำเร็จ!")
+                st.success("🎉 บันทึกผลตรวจเรียบร้อย ระบบได้ทำการล็อกสถานะรายการนี้แล้ว!")
+                time_lib.sleep(1)
                 st.rerun()
 
     df_all = load_data()
@@ -353,7 +360,6 @@ else:
         else:
             df_filtered = df_all
 
-        # หัวตารางฝั่งผู้ตรวจ (เพิ่มคอลัมน์ "การจัดการ" ขนาดตัวอักษรและสัดส่วนที่ปรับสมบูรณ์แล้ว)
         st.markdown("<div style='background-color:#800000; padding:12px 10px; border-radius:8px 8px 0px 0px;'><div style='display:flex; align-items:center; text-align:left;'>"
                     f"<div style='flex:{col_widths_inspector[0]};' class='table-header-text'>ID</div>"
                     f"<div style='flex:{col_widths_inspector[1]};' class='table-header-text'>แหล่งที่มา</div>"
@@ -365,7 +371,7 @@ else:
                     f"<div style='flex:{col_widths_inspector[7]};' class='table-header-text'>ผู้ตรวจ</div>"
                     f"<div style='flex:{col_widths_inspector[8]};' class='table-header-text'>วันที่ตรวจ</div>"
                     f"<div style='flex:{col_widths_inspector[9]};' class='table-header-text'>ความคิดเห็นผู้ตรวจ</div>"
-                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>สถานะ</div>"
+                    f"<div style='flex:{col_widths_inspector[10]};' class='table-header-text'>Ref สถานะ</div>"
                     f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
@@ -385,16 +391,23 @@ else:
             c_date2.markdown(f"<div class='table-text'>{row['inspected_date_text'] if pd.notna(row['inspected_date_text']) else '-'}</div>", unsafe_allow_html=True)
             c_comment.markdown(f"<div class='table-text'>{row['inspector_comment'] if pd.notna(row['inspector_comment']) else '-'}</div>", unsafe_allow_html=True)
             
-            if row['check_status'] == 'รอตรวจเอกสาร':
+            current_status = row['check_status']
+            if current_status == 'รอตรวจเอกสาร':
                 c_status.markdown("⏳ <span style='color:orange; font-weight:bold; font-size:14px;'>รอตรวจเอกสาร</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'อนุมัติพิมพ์ใบอนุญาต':
+            elif current_status == 'อนุมัติพิมพ์ใบอนุญาต':
                 c_status.markdown("🟢 <span style='color:green; font-weight:bold; font-size:14px;'>อนุมัติพิมพ์ใบอนุญาต</span>", unsafe_allow_html=True)
-            elif row['check_status'] == 'ไม่อนุมัติคำขอ':
+            elif current_status == 'ไม่อนุมัติคำขอ':
                 c_status.markdown("🔴 <span style='color:#800000; font-weight:bold; font-size:14px;'>ไม่อนุมัติคำขอ</span>", unsafe_allow_html=True)
             else:
                 c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
             
-            # ปุ่มตรวจจะถูกจัดวางอย่างกึ่งกลางสมดุลร่วมกับแถวข้อมูล
-            if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
-                show_inspection_modal(int(row['id']))
+            # ✨ ส่วนการล็อกเงื่อนไขที่ต้องการ (1. ห้ามตรวจซ้ำ / 2. ห้ามแก้ไขสถานะ)
+            if current_status == 'รอตรวจเอกสาร':
+                # แสดงปุ่ม "🔍 ตรวจ" ปกติเฉพาะรายการที่ยังไม่ได้ตรวจเท่านั้น
+                if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
+                    show_inspection_modal(int(row['id']))
+            else:
+                # ปรับเปลี่ยนช่องการจัดการให้เป็นป้ายข้อความล็อกถาวร เพื่อปิดกั้นการคลิกหรือแก้ไขซ้ำ
+                c_act.markdown("<div style='color:gray; font-size:13px; font-style:italic; padding-left:5px;'>🔒 ตรวจแล้ว</div>", unsafe_allow_html=True)
+                
             st.markdown("</div>", unsafe_allow_html=True)
