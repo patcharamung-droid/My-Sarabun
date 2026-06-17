@@ -173,12 +173,12 @@ def load_data():
 def generate_report_pdf_fpdf(row_data):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     
-    # ดึงไบต์ของฟอนต์มาลงทะเบียนสดในเมมโมรี (ไม่ต้องสร้างไฟล์ลงดิสก์เครื่อง)
+#  ใช้ io.BytesIO() ห่อหุ้มเพื่อให้ fpdf2 มองเห็นไบต์ดิบเป็นเสมือนไฟล์ Font ในเมมโมรี
     if reg_font_bytes and bold_font_bytes:
-        pdf.add_font("Sarabun", "", reg_font_bytes)
-        pdf.add_font("Sarabun", "B", bold_font_bytes)
+        pdf.add_font("Sarabun", style="", fname=io.BytesIO(reg_font_bytes))
+        pdf.add_font("Sarabun", style="B", fname=io.BytesIO(bold_font_bytes))
     else:
-        pdf.add_font("Helvetica", "", "")
+        pdf.add_font("Helvetica", style="", fname="")
         
     pdf.add_page()
     pdf.set_margins(15, 15, 15)
