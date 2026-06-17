@@ -4,30 +4,14 @@ from datetime import datetime
 import time as time_lib
 from streamlit_gsheets import GSheetsConnection
 import io
-import urllib.request
 
-# เปลี่ยนมานำเข้าเครื่องมือสร้าง PDF จาก fpdf2
-from fpdf import FPDF
+# นำเข้าตัวแปลง HTML เป็น PDF อัจฉริยะ WeasyPrint
+from weasyprint import HTML
 
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# ฟังก์ชันดึงฟอนต์ไทยจากอินเทอร์เน็ตมาเตรียมไว้ให้ fpdf2
-@st.cache_resource
-def get_thai_font_bytes():
-    try:
-        regular_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Regular.ttf"
-        bold_url = "https://github.com/google/fonts/raw/main/ofl/sarabun/Sarabun-Bold.ttf"
-        reg_data = urllib.request.urlopen(regular_url).read()
-        bold_data = urllib.request.urlopen(bold_url).read()
-        return reg_data, bold_data
-    except Exception as e:
-        st.error(f"❌ โหลดฟอนต์ไทยล้มเหลว: {e}")
-        return None, None
-
-reg_font_bytes, bold_font_bytes = get_thai_font_bytes()
-
-# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำ
+# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำในหน้าเว็บ Streamlit
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
@@ -78,19 +62,6 @@ st.markdown("""
             font-family: 'Sarabun', sans-serif;
             pointer-events: none;
             z-index: 999;
-        }
-
-        .table-text {
-            font-size: 14px !important;
-            font-family: 'Sarabun', sans-serif;
-            color: #333333;
-            word-break: break-word;
-        }
-        .table-header-text {
-            font-size: 15px !important;
-            font-family: 'Sarabun', sans-serif;
-            color: white;
-            font-weight: bold;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -169,131 +140,183 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันสร้างฟอร์มรายงาน PDF ด้วยเอนจิน fpdf2 ตัวอัปเดตสิทธิ์ Font ไบต์สตรีม
-def generate_report_pdf_fpdf(row_data):
-    pdf = FPDF(orientation="P", unit="mm", format="A4")
-    
-    # 🎯 [แก้ไข] ส่งพารามิเตอร์แบบเรียงลำดับโดยตรง เพื่อป้องกันปัญหาความต่างเวอร์ชันแพ็กเกจ fpdf2
-    if reg_font_bytes and bold_font_bytes:
-        pdf.add_font("Sarabun", "", reg_font_bytes)
-        pdf.add_font("Sarabun", "B", bold_font_bytes)
-    else:
-        pdf.add_font("Helvetica", "", "")
+# ✨ ฟังก์ชันเจน PDF อัจฉริยะ แปลงโฉม HTML+CSS ด้วยเอนจิน WeasyPrint (สระภาษาไทยคมชัด 100%)
+def generate_report_pdf_weasy(row_data):
+    # วิ่งไปดึงฟอนต์สารบรรณเวอร์ชันเว็บมาประมวลผล สระและวรรณยุกต์ซ้อนจึงเรียงตัวสวยงาม
+    html_content = f"""
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+            @page {{
+                size: A4;
+                margin: 20px;
+            }}
+            body {{
+                font-family: 'Sarabun', sans-serif;
+                color: #333;
+                line-height: 1.6;
+                font-size: 15px;
+            }}
+            .title {{
+                color: #800000;
+                font-size: 24px;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 2px;
+            }}
+            .subtitle {{
+                font-size: 16px;
+                text-align: center;
+                color: #555;
+                margin-bottom: 25px;
+            }}
+            .info-table {{
+                width: 100%;
+                margin-bottom: 20px;
+                border-collapse: collapse;
+            }}
+            .info-table td {{
+                padding: 6px;
+                vertical-align: top;
+            }}
+            .section-title {{
+                font-weight: bold;
+                font-size: 16px;
+                margin-top: 15px;
+                margin-bottom: 8px;
+                color: #333;
+            }}
+            .data-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+            }}
+            .data-table th {{
+                background-color: #800000;
+                color: white;
+                font-weight: bold;
+                text-align: left;
+                padding: 10px;
+                border: 1px solid #ccc;
+            }}
+            .data-table td {{
+                padding: 10px;
+                border: 1px solid #ccc;
+            }}
+            .status-pass {{ color: green; font-weight: bold; }}
+            .status-fail {{ color: red; font-weight: bold; }}
+            
+            .summary-box {{
+                width: 100%;
+                border: 1px solid #ddd;
+                border-collapse: collapse;
+                margin-bottom: 40px;
+            }}
+            .summary-box td {{
+                padding: 12px;
+                border: 1px solid #ddd;
+            }}
+            .signature-container {{
+                width: 100%;
+                margin-top: 50px;
+            }}
+            .signature-box {{
+                width: 48%;
+                text-align: center;
+                display: inline-block;
+                vertical-align: top;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="title">REPORT: FORM OF APPLICATION LICENSE INSPECTION</div>
+        <div class="subtitle">รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต</div>
         
-    pdf.add_page()
-    pdf.set_margins(15, 15, 15)
+        <table class="info-table">
+            <tr>
+                <td style="width:15%"><b>เลขหนังสือ:</b></td>
+                <td style="width:35%">{row_data['doc_id_text']}</td>
+                <td style="width:15%"><b>แหล่งที่มา:</b></td>
+                <td style="width:35%">{row_data['source_place']}</td>
+            </tr>
+            <tr>
+                <td><b>ชื่อผู้ยื่นคำขอ:</b></td>
+                <td>{row_data['fullname']}</td>
+                <td><b>ประเภทคำขอ:</b></td>
+                <td>{row_data['doc_type']}</td>
+            </tr>
+        </table>
+        
+        <div class="section-title">📋 รายละเอียดและสถานะเอกสารแนบ (Attachment Checklist)</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%">ลำดับเอกสาร</th>
+                    <th style="width: 20%">สถานะผลตรวจ</th>
+                    <th style="width: 55%">รายละเอียดหมายเหตุเพิ่มเติม</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
     
-    # 1. ส่วนหัวรายงานที่เป็นทางการ
-    pdf.set_font("Sarabun", "B", 18)
-    pdf.set_text_color(128, 0, 0) # สีแดงเลือดหมูสไตล์พรีเมียม
-    pdf.cell(0, 10, "REPORT: FORM OF APPLICATION LICENSE INSPECTION", ln=True, align="C")
-    
-    pdf.set_font("Sarabun", "", 12)
-    pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 8, "รายงานผลการพิจารณาตรวจสอบยืนยันเอกสารคำขอใบอนุญาต", ln=True, align="C")
-    pdf.ln(6)
-    
-    # 2. ตารางรายละเอียดข้อมูลพื้นฐาน
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.set_text_color(0, 0, 0)
-    
-    # ข้อมูลบรรทัดที่ 1
-    pdf.cell(30, 8, "เลขหนังสือ:", ln=False)
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(60, 8, str(row_data['doc_id_text']), ln=False)
-    
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.cell(30, 8, "แหล่งที่มา:", ln=False)
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(60, 8, str(row_data['source_place']), ln=True)
-    
-    # ข้อมูลบรรทัดที่ 2
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.cell(30, 8, "ชื่อผู้ยื่นคำขอ:", ln=False)
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(60, 8, str(row_data['fullname']), ln=False)
-    
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.cell(30, 8, "ประเภทคำขอ:", ln=False)
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(60, 8, str(row_data['doc_type']), ln=True)
-    pdf.ln(6)
-    
-    # 3. ส่วนหัวตาราง Checklist เอกสารแนบ
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.cell(0, 8, "📋 รายละเอียดและสถานะเอกสารแนบ (Attachment Checklist)", ln=True)
-    
-    # หัวตาราง (Header)
-    pdf.set_fill_color(128, 0, 0)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(40, 9, " ลำดับเอกสาร", border=1, ln=False, fill=True)
-    pdf.cell(35, 9, " สถานะผลตรวจ", border=1, ln=False, fill=True)
-    pdf.cell(105, 9, " รายละเอียดหมายเหตุเพิ่มเติม", border=1, ln=True, fill=True)
-    
-    # ข้อมูลตาราง (Data rows)
-    pdf.set_text_color(0, 0, 0)
+    # วนลูปหยอดแถวเอกสาร 1-6 แบบไดนามิกใน HTML
     for i in range(1, 7):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
         if st_key in row_data and row_data[st_key] != "ไม่ได้ระบุ":
-            pdf.set_font("Sarabun", "", 11)
-            pdf.cell(40, 9, f" เอกสารแนบลำดับที่ {i}", border=1, ln=False)
+            status_class = "status-pass" if row_data[st_key] == "ผ่าน" else "status-fail"
+            note_val = row_data[nt_key] if (pd.notna(row_data[nt_key]) and row_data[nt_key] != "") else "-"
+            html_content += f"""
+                <tr>
+                    <td>เอกสารแนบลำดับที่ {i}</td>
+                    <td class="{status_class}">{row_data[st_key]}</td>
+                    <td>{note_val}</td>
+                </tr>
+            """
             
-            # แยกสีสถานะ ผ่าน (เขียว) / ไม่ผ่าน (แดง) เพื่อความชัดเจน
-            if row_data[st_key] == "ผ่าน":
-                pdf.set_text_color(0, 128, 0)
-                pdf.set_font("Sarabun", "B", 11)
-            else:
-                pdf.set_text_color(200, 0, 0)
-                pdf.set_font("Sarabun", "B", 11)
-                
-            pdf.cell(35, 9, f" {row_data[st_key]}", border=1, ln=False)
-            
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_font("Sarabun", "", 11)
-            note_val = str(row_data[nt_key]) if (pd.notna(row_data[nt_key]) and row_data[nt_key] != "") else "-"
-            pdf.cell(105, 9, f" {note_val}", border=1, ln=True)
-            
-    pdf.ln(6)
-    
-    # 4. ตารางมติสรุปและความคิดเห็นเพิ่มเติม
-    pdf.set_font("Sarabun", "B", 11)
-    pdf.cell(0, 8, "🔍 สรุปผลพิจารณาจากผู้ตรวจอนุมัติ", ln=True)
-    
-    pdf.cell(40, 9, " สถานะภาพรวม:", border=1, ln=False, fill=False)
-    pdf.set_text_color(128, 0, 0)
-    pdf.cell(140, 9, f" {row_data['check_status']}", border=1, ln=True)
-    
-    pdf.set_text_color(0, 0, 0)
-    pdf.cell(40, 14, " ความคิดเห็นเพิ่มเติม:", border=1, ln=False)
+    # ต่อท้ายด้วยตารางสรุปมติผลตรวจ และโซนลงชื่อผู้บันทึกคู่ผู้ตรวจสองฝั่ง
     comment_val = row_data['inspector_comment'] if pd.notna(row_data['inspector_comment']) else "-"
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(140, 14, f" {comment_val}", border=1, ln=True)
-    pdf.ln(25) # เผื่อพื้นที่ดิ่งลงมาสำหรับกล่องเซ็นชื่อกึ่งกลางคู่
+    html_content += f"""
+            </tbody>
+        </table>
+        
+        <div class="section-title">🔍 สรุปผลพิจารณาจากผู้ตรวจอนุมัติ</div>
+        <table class="summary-box">
+            <tr>
+                <td style="width: 25%; background-color:#fafafa;"><b>สถานะภาพรวม:</b></td>
+                <td style="color:#800000; font-weight:bold;">{row_data['check_status']}</td>
+            </tr>
+            <tr>
+                <td style="background-color:#fafafa;"><b>ความคิดเห็นเพิ่มเติม:</b></td>
+                <td>{comment_val}</td>
+            </tr>
+        </table>
+        
+        <div class="signature-container">
+            <div class="signature-box" style="float: left;">
+                ลงชื่อ.......................................................... ผู้บันทึก<br>
+                ( {row_data['creator_name']} )<br>
+                ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ<br>
+                ลงวันที่: {row_data['created_date_text']}
+            </div>
+            <div class="signature-box" style="float: right;">
+                ลงชื่อ.......................................................... ผู้ตรวจ<br>
+                ( {row_data['inspector_name']} )<br>
+                ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br>
+                ลงวันที่: {row_data['inspected_date_text']}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
     
-    # 5. โซนลงนามสองฝั่งสมดุล ซ้าย-ขวา ลายเซ็นและไม้เอกคมชัดแน่นอน
-    current_y = pdf.get_y()
-    
-    # ฝั่งซ้าย - ผู้บันทึก
-    pdf.set_xy(15, current_y)
-    pdf.set_font("Sarabun", "", 11)
-    pdf.cell(85, 6, "ลงชื่อ.......................................................... ผู้บันทึก", ln=True, align="C")
-    pdf.cell(85, 6, f"( {row_data['creator_name']} )", ln=True, align="C")
-    pdf.cell(85, 6, "ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ", ln=True, align="C")
-    pdf.cell(85, 6, f"ลงวันที่: {row_data['created_date_text']}", ln=True, align="C")
-    
-    # ฝั่งขวา - ผู้ตรวจ
-    pdf.set_xy(110, current_y)
-    pdf.cell(85, 6, "ลงชื่อ.......................................................... ผู้ตรวจ", ln=True, align="C")
-    pdf.cell(85, 6, f"( {row_data['inspector_name']} )", ln=True, align="C")
-    pdf.cell(85, 6, "ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ", ln=True, align="C")
-    pdf.cell(85, 6, f"ลงวันที่: {row_data['inspected_date_text']}", ln=True, align="C")
-    
-    # เอาต์พุตส่งค่ากลับเป็นไบต์สตรีมเพื่อให้ปุ่ม Download รับไปพ่นต่อได้ทันที
-    return bytes(pdf.output())
+    # สั่งให้ Weasyprint แปลงบล็อก HTML ตัวนี้ออกมาเป็นไบต์ PDF ส่งกลับไปที่ระบบหลัก
+    return HTML(string=html_content).write_pdf()
 
 
-# อัตราส่วนคอลัมน์ที่ผ่านการคำนวณให้สมดุล
+# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ
 col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3]
 col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 
@@ -548,8 +571,8 @@ else:
                 if c_act.button("🔍 ตรวจ", key=f"btn_{int(row['id'])}"):
                     show_inspection_modal(int(row['id']))
             else:
-                # เรียกใช้เอนจิน FPDF2 เจนค่าสตรีมไบต์สดๆ ส่งต่อเข้าปุ่มได้ทันที
-                pdf_data = generate_report_pdf_fpdf(row)
+                # เรียกใช้เอนจิน WeasyPrint ประมวลผลโค้ดโครงร่าง HTML ออกเป็น PDF
+                pdf_data = generate_report_pdf_weasy(row)
                 c_act.download_button(
                     label="📄 รายงาน",
                     data=pdf_data,
