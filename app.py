@@ -71,7 +71,7 @@ st.markdown("""
             word-break: break-word;
         }
         
-        /* 🎯 [แก้ไขตรงจุด] บังคับให้หัวตารางบนหน้าเว็บแสดงผลเป็นตัวอักษรสีขาว และตัวหนา 100% */
+        /* บังคับให้หัวตารางบนหน้าเว็บแสดงผลเป็นตัวอักษรสีขาว และตัวหนา 100% */
         .table-header-text {
             font-size: 14px !important;
             font-family: 'Sarabun', sans-serif !important;
@@ -103,7 +103,7 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 
 # --- หน้าจอเลือกล็อกอิน ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบทะเบียนสารบรรณ (Google Sheets)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
     with col_l2:
         with st.form(key='login_form'):
@@ -316,7 +316,7 @@ def generate_report_pdf_weasy(row_data):
             <div class="signature-box" style="float: right;">
                 ลงชื่อ.......................................................... ผู้ตรวจ<br>
                 ( {row_data['inspector_name']} )<br>
-                ตำแหน่ง: ผู้จัดการ / ผู้ตรวจอนุมัติคำขอ<br>
+                ตำแหน่ง: ผู้ตรวจอนุมัติพิมพ์ใบอนุญาต<br>
                 ลงวันที่: {row_data['inspected_date_text']}
             </div>
         </div>
@@ -460,7 +460,7 @@ if st.session_state.user_role == "creator":
                 else:
                     c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
                 
-                # ปุ่มดาวน์โหลดรายงาน PDF สำหรับฝอนฝั่ง Creator ขาวหนาสว่างสวยงาม
+                # ปุ่มดาวน์โหลดรายงาน PDF สำหรับฝั่ง Creator
                 pdf_data = generate_report_pdf_weasy(row)
                 c_act.download_button(
                     label="📄 รายงาน",
@@ -566,11 +566,11 @@ else:
                     f"<div style='flex:{col_widths_inspector[11]};' class='table-header-text'>การจัดการ</div>"
                     "</div></div>", unsafe_allow_html=True)
 
+        # 🔥 [แก้ไขสำเร็จ] แสดงคำสั่งสร้างและหั่นตารางฝั่งผู้ตรวจครบถ้วน 100% ไร้เครื่องหมาย Ellipsis ซ่อนเร้น
         for _, row in df_filtered.iterrows():
             st.markdown("<div style='padding:6px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
             c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_inspector)
             
-            ...
             c_id.write(f"{int(row['id'])}")
             c_src.write(f"{row['source_place'] if pd.notna(row['source_place']) else '-'}")
             c_no.write(f"{row['doc_id_text']}")
