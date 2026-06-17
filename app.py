@@ -169,16 +169,16 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันสร้างฟอร์มรายงาน PDF ด้วยเอนจิน fpdf2 (แก้ปัญหาสระลอยและไม้เอกหายถาวร)
+# ✨ ฟังก์ชันสร้างฟอร์มรายงาน PDF ด้วยเอนจิน fpdf2 ตัวอัปเดตสิทธิ์ Font ไบต์สตรีม
 def generate_report_pdf_fpdf(row_data):
     pdf = FPDF(orientation="P", unit="mm", format="A4")
     
-#  ใช้ io.BytesIO() ห่อหุ้มเพื่อให้ fpdf2 มองเห็นไบต์ดิบเป็นเสมือนไฟล์ Font ในเมมโมรี
+    # 🎯 [แก้ไข] ส่งพารามิเตอร์แบบเรียงลำดับโดยตรง เพื่อป้องกันปัญหาความต่างเวอร์ชันแพ็กเกจ fpdf2
     if reg_font_bytes and bold_font_bytes:
-        pdf.add_font("Sarabun", style="", fname=io.BytesIO(reg_font_bytes))
-        pdf.add_font("Sarabun", style="B", fname=io.BytesIO(bold_font_bytes))
+        pdf.add_font("Sarabun", "", reg_font_bytes)
+        pdf.add_font("Sarabun", "B", bold_font_bytes)
     else:
-        pdf.add_font("Helvetica", style="", fname="")
+        pdf.add_font("Helvetica", "", "")
         
     pdf.add_page()
     pdf.set_margins(15, 15, 15)
@@ -276,6 +276,7 @@ def generate_report_pdf_fpdf(row_data):
     
     # ฝั่งซ้าย - ผู้บันทึก
     pdf.set_xy(15, current_y)
+    pdf.set_font("Sarabun", "", 11)
     pdf.cell(85, 6, "ลงชื่อ.......................................................... ผู้บันทึก", ln=True, align="C")
     pdf.cell(85, 6, f"( {row_data['creator_name']} )", ln=True, align="C")
     pdf.cell(85, 6, "ตำแหน่ง: เจ้าหน้าที่บันทึกคำขอ", ln=True, align="C")
