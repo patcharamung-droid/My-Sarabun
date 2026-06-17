@@ -63,6 +63,21 @@ st.markdown("""
             pointer-events: none;
             z-index: 999;
         }
+
+        .table-text {
+            font-size: 14px !important;
+            font-family: 'Sarabun', sans-serif;
+            color: #333333;
+            word-break: break-word;
+        }
+        
+        /* 🎯 [แก้ไขตรงจุด] บังคับให้หัวตารางบนหน้าเว็บแสดงผลเป็นตัวอักษรสีขาว และตัวหนา 100% */
+        .table-header-text {
+            font-size: 14px !important;
+            font-family: 'Sarabun', sans-serif !important;
+            color: #ffffff !important;
+            font-weight: bold !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -140,7 +155,7 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (อัปเดตสไตล์ตัวหนังสือหัวตารางสีขาวหนา)
+# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (หัวตารางในเอกสารเป็นตัวหนาสีขาวเรียบร้อย)
 def generate_report_pdf_weasy(row_data):
     html_content = f"""
     <html>
@@ -192,7 +207,6 @@ def generate_report_pdf_weasy(row_data):
                 border-collapse: collapse;
                 margin-bottom: 20px;
             }}
-            /* 🎯 [แก้ไข] บังคับให้ข้อความหัวตาราง (th) เป็นสีขาวเหลืองสว่าง และมีความหนาเด่นชัด */
             .data-table th {{
                 background-color: #800000;
                 color: #ffffff !important;
@@ -312,7 +326,7 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ (เพิ่มพื้นที่ขวาสุดของฝั่ง Creator เพื่อปุ่มรายงาน)
+# อัตราส่วนคอลัมน์ตารางสารบรรณในหน้าจอเว็บ
 col_widths_creator = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 col_widths_inspector = [0.4, 1.1, 1.1, 1.4, 1.3, 1.1, 0.9, 1.1, 0.9, 1.6, 1.3, 1.4]
 
@@ -446,7 +460,7 @@ if st.session_state.user_role == "creator":
                 else:
                     c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
                 
-                # 🎯 [แก้ไข] เพิ่มปุ่มดาวน์โหลดรายงาน PDF ให้ฝั่ง Creator กดได้เมื่อพิจารณาเสร็จแล้ว
+                # ปุ่มดาวน์โหลดรายงาน PDF สำหรับฝอนฝั่ง Creator ขาวหนาสว่างสวยงาม
                 pdf_data = generate_report_pdf_weasy(row)
                 c_act.download_button(
                     label="📄 รายงาน",
@@ -556,6 +570,7 @@ else:
             st.markdown("<div style='padding:6px 10px; border-bottom:1px solid #eee; display:flex; align-items:center; background-color:white;'>", unsafe_allow_html=True)
             c_id, c_src, c_no, c_name, c_type, c_user, c_date1, c_admin, c_date2, c_comment, c_status, c_act = st.columns(col_widths_inspector)
             
+            ...
             c_id.write(f"{int(row['id'])}")
             c_src.write(f"{row['source_place'] if pd.notna(row['source_place']) else '-'}")
             c_no.write(f"{row['doc_id_text']}")
