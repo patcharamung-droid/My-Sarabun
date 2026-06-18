@@ -11,44 +11,133 @@ from weasyprint import HTML
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# ปรับแต่ง CSS ซ่อนเครื่องมือระบบ และจัดการตำแหน่งลายน้ำในหน้าเว็บ Streamlit
+# 🏛️ [ระบบดีไซน์ใหม่] CSS ตกแต่งหน้าล็อกอินและฟอร์มให้ทันสมัยสไตล์โมเดิร์น
 st.markdown("""
     <style>
+        /* นำเข้าฟอนต์ Google Fonts เพื่อความสวยงาม */
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Sarabun:wght@300;400;600;700&display=swap');
+        
+        /* ซ่อนเครื่องมือระบบของ Streamlit เพื่อความเป็นส่วนตัว */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
         div[data-testid="stToolbar"] {display: none !important;}
         button[title="View source code"] {display: none !important;}
         
+        /* สไตล์ฟอนต์โดยรวมของระบบ */
+        html, body, [data-testid="stAppViewContainer"] {
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        /* 1. พื้นหลังหน้าล็อกอินสีแดงอ่อนๆ แบบไล่เฉดละมุน (Soft Light Red Background) */
+        .login-bg-wrapper {
+            background: linear-gradient(180deg, #fffcfc 0%, #fff2f2 60%, #ffe8e8 100%);
+            padding: 40px 20px;
+            border-radius: 24px;
+            box-shadow: inset 0 0 40px rgba(128, 0, 0, 0.02);
+            margin-top: 10px;
+        }
+
+        /* 2. กล่องล็อกอินสไตล์โมเดิร์น ทันสมัย มินิมอลการ์ด */
+        .modern-login-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(255, 200, 200, 0.5);
+            border-top: 5px solid #800000; /* แถบสีแดงเลือดหมูด้านบนเพิ่มมิติ */
+            border-radius: 18px;
+            padding: 35px;
+            box-shadow: 0 12px 35px rgba(128, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        
+        /* 3. จัดการตัวหนังสือให้สวยงาม (Beautiful Typography) */
+        .login-main-title {
+            font-family: 'Kanit', sans-serif !important;
+            font-weight: 600 !important;
+            font-size: 2.2em !important;
+            text-align: center;
+            background: linear-gradient(45deg, #600000, #a31d1d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        .login-subtitle {
+            font-family: 'Sarabun', sans-serif;
+            font-size: 14px;
+            color: #775555;
+            text-align: center;
+            margin-bottom: 25px;
+            letter-spacing: 0.3px;
+        }
+        .login-form-header {
+            font-family: 'Kanit', sans-serif !important;
+            font-weight: 500;
+            color: #800000;
+            text-align: center;
+            font-size: 1.3em;
+            margin-top: 0px;
+        }
+
+        /* ตกแต่งช่องกรอกข้อมูล (Modern Inputs Setup) */
+        div[data-testid="stTextInput"] input {
+            border-radius: 10px !important;
+            border: 1px solid #dcd0d0 !important;
+            padding: 12px 15px !important;
+            font-family: 'Sarabun', sans-serif;
+            background-color: #fdfcfc !important;
+            transition: all 0.25s ease-in-out;
+        }
+        div[data-testid="stTextInput"] input:focus {
+            border-color: #a31d1d !important;
+            box-shadow: 0 0 0 3px rgba(163, 29, 29, 0.15) !important;
+            background-color: #ffffff !important;
+        }
+        div[data-testid="stTextInput"] label {
+            font-family: 'Kanit', sans-serif !important;
+            font-weight: 400 !important;
+            color: #443333 !important;
+            font-size: 14px !important;
+        }
+
+        /* ตกแต่งปุ่มกดหลักในระบบ */
         div.stButton > button:first-child { 
-            background-color: #800000; 
-            color: white; 
-            border-radius: 8px; 
-            font-weight: bold; 
+            background: linear-gradient(90deg, #800000 0%, #a31d1d 100%);
+            color: white !important; 
+            border: none !important;
+            border-radius: 10px !important; 
+            padding: 12px 24px !important;
+            font-family: 'Kanit', sans-serif !important;
+            font-weight: 500 !important;
+            font-size: 16px !important;
+            width: 100% !important; /* ปรับขนาดปุ่มล็อกอินให้กว้างเต็มตา */
+            box-shadow: 0 4px 12px rgba(128, 0, 0, 0.15);
+            transition: all 0.2s ease;
         }
         div.stButton > button:first-child:hover { 
-            background-color: #550000; 
-            color: #ffcccc; 
+            background: linear-gradient(90deg, #550000 0%, #800000 100%);
+            box-shadow: 0 6px 18px rgba(128, 0, 0, 0.25);
+            transform: translateY(-1px);
         }
         
+        /* สไตล์ฟอร์มและตารางข้อมูลภายในแอปพลิเคชัน */
         div[data-testid="stForm"] { 
-            border: 2px solid #800000 !important; 
-            border-radius: 12px !important; 
-            background-color: #fffafb; 
+            border: 1px solid rgba(128, 0, 0, 0.2) !important; 
+            border-radius: 14px !important; 
+            background-color: #fffbfa; 
             padding: 25px !important; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
         }
         
-        h1, h2, h3 { 
+        h1, h2, h3, h4 { 
             color: #800000 !important; 
-            font-family: 'Sarabun', sans-serif; 
+            font-family: 'Kanit', sans-serif; 
         }
         
         section[data-testid="stSidebar"] { 
             background-color: #4a0000; 
-            color: white; 
         }
         section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
             color: #ffffff !important; 
+            font-family: 'Kanit', sans-serif;
         }
 
         .sidebar-watermark {
@@ -57,47 +146,20 @@ st.markdown("""
             left: 20px;
             width: 260px; 
             text-align: center;
-            color: rgba(255, 255, 255, 0.4) !important; 
-            font-size: 13px;
+            color: rgba(255, 255, 255, 0.35) !important; 
+            font-size: 12px;
             font-family: 'Sarabun', sans-serif;
             pointer-events: none;
             z-index: 999;
         }
 
-        .table-text {
-            font-size: 14px !important;
-            font-family: 'Sarabun', sans-serif;
-            color: #333333;
-            word-break: break-word;
-        }
-        
-        /* 🎯 บังคับให้ข้อความหัวตารางแสดงผล "ตรงกลางช่อง" ตัวหนา และสีขาว */
         .table-header-text {
             font-size: 14px !important;
-            font-family: 'Sarabun', sans-serif !important;
+            font-family: 'Kanit', sans-serif !important;
             color: #ffffff !important;
-            font-weight: bold !important;
+            font-weight: 500 !important;
             text-align: center !important;
             width: 100%;
-        }
-
-        /* 🎨 สไตล์การตกแต่งสีสันการ์ดหน้าจอล็อกอิน */
-        .login-container {
-            background: linear-gradient(135deg, #fff5f5 0%, #fff0f2 100%);
-            border-left: 8px solid #800000;
-            border-right: 2px solid #ffccd5;
-            border-top: 2px solid #ffccd5;
-            border-bottom: 2px solid #ffccd5;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 8px 24px rgba(128, 0, 0, 0.08);
-            margin-bottom: 20px;
-        }
-        .login-title-accent {
-            background: linear-gradient(45deg, #800000, #c41e3a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: bold;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -122,19 +184,25 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_role" not in st.session_state: st.session_state.user_role = None
 if "user_fullname" not in st.session_state: st.session_state.user_fullname = None
 
-# --- หน้าจอเลือกล็อกอิน (เวอร์ชันเพิ่มสีสันสวยงาม) ---
+# --- ส่วนของการแสดงผล: หน้าจอล็อกอินใหม่ดีไซน์โมเดิร์นตามโจทย์ ---
 if not st.session_state.logged_in:
-    st.markdown("<br><h1 style='text-align: center; font-size: 2.3em;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>ส่วนใบอนุญาตและกำกับดูแลตรวจสอบสถานะเอกสารแบบครบวงจร</p>", unsafe_allow_html=True)
+    # เปิดการใช้งาน Wrapper ควบคุมพื้นหลังสีแดงพาสเทลอ่อนๆ ทั่วบริเวณล็อกอิน
+    st.markdown('<div class="login-bg-wrapper">', unsafe_allow_html=True)
     
-    col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
+    st.markdown('<h1 class="login-main-title">🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="login-subtitle">ส่วนใบอนุญาตและกำกับดูแล ตรวจสอบและติดตามสถานะเอกสารแบบเรียลไทม์</p>', unsafe_allow_html=True)
+    
+    col_l1, col_l2, col_l3 = st.columns([1.1, 1, 1.1])
     with col_l2:
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        with st.form(key='login_form'):
-            st.markdown("<h3 style='text-align: center; margin-top:0px;' class='login-title-accent'>🔐 เข้าสู่ระบบใช้งาน</h3>", unsafe_allow_html=True)
-            st.write("---")
-            username_input = st.text_input("👤 ชื่อผู้ใช้งาน (Username)", placeholder="ระบุชื่อผู้ใช้งานประจำการ")
-            password_input = st.text_input("🔑 รหัสผ่าน (Password)", type="password", placeholder="••••••")
+        # เปิดหน้ากากกล่องสไตล์โมเดิร์น
+        st.markdown('<div class="modern-login-card">', unsafe_allow_html=True)
+        with st.form(key='modern_login_form'):
+            st.markdown('<h3 class="login-form-header">🔐 เข้าสู่ระบบปฏิบัติการ</h3>', unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True)
+            
+            username_input = st.text_input("👤 ชื่อผู้ใช้งาน (Username)", placeholder="ระบุบัญชีผู้ใช้งาน")
+            password_input = st.text_input("🔑 รหัสผ่าน (Password)", type="password", placeholder="ระบุรหัสผ่านประกอบสิทธิ์")
+            
             st.markdown("<br>", unsafe_allow_html=True)
             login_btn = st.form_submit_button("🔓 ยืนยันเข้าสู่ระบบ")
             
@@ -143,12 +211,14 @@ if not st.session_state.logged_in:
                 st.session_state.logged_in = True
                 st.session_state.user_role = USERS[username_input]["role"]
                 st.session_state.user_fullname = USERS[username_input]["name"]
-                st.success("🎉 ล็อกอินสำเร็จ เข้าสู่ระบบงาน...")
-                time_lib.sleep(1)
+                st.success("🎉 ตรวจสอบข้อมูลสำเร็จ ยินดีต้อนรับเข้าสู่ระบบ...")
+                time_lib.sleep(0.8)
                 st.rerun()
             else: 
                 st.error("❌ บัญชีผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
         st.markdown('</div>', unsafe_allow_html=True)
+        
+    st.markdown('</div>', unsafe_allow_html=True) # ปิดกล่องควบคุมพื้นหลังสีแดงอ่อน
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
@@ -183,7 +253,7 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (ขยายลูปเป็น 10 ช่องทางเอกสารแนบ)
+# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (รองรับ 10 ช่องทางเอกสารแนบ)
 def generate_report_pdf_weasy(row_data):
     html_content = f"""
     <html>
@@ -304,7 +374,6 @@ def generate_report_pdf_weasy(row_data):
             <tbody>
     """
     
-    # วนลูปรันแสดงรายงานเอกสารแนบ 1-10 ช่องใน PDF
     for i in range(1, 11):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
@@ -356,7 +425,6 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# จัดส่วนสัดส่วนคอลัมน์ตารางหน้าเว็บให้กว้างกระชับและสมส่วน
 col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 
@@ -366,7 +434,6 @@ col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1
 if st.session_state.user_role == "creator":
     st.subheader("📝 แบบเช็ครายการเอกสารคำขอและตรวจสอบเบื้องต้น")
     
-    # ปรับจำนวนเริ่มต้นการเห็นช่องเอกสารแนบเป็น 3 ช่อง และขยายได้สูงสุดถึง 10 ช่อง
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
 
@@ -385,7 +452,6 @@ if st.session_state.user_role == "creator":
         st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง / สูงสุด 10 ช่อง)</h4>", unsafe_allow_html=True)
         
         doc_data_inputs = {}
-        # 🎯 ขยายขอบเขตฟอร์มเอกสารแนบให้อ่านค่าได้สูงสุด 1-10 ช่อง
         for i in range(1, 11):
             if i <= st.session_state.visible_docs:
                 status, note = render_doc_row(f"📄 เอกสาร {i}")
@@ -400,7 +466,6 @@ if st.session_state.user_role == "creator":
 
     c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
     with c_btn1:
-        # ขยายขีดจำกัดจากเดิมเลข 6 เป็นเลข 10 ช่องเอกสาร
         if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 10:
             st.session_state.visible_docs += 1; st.rerun()
     with c_btn2:
@@ -412,7 +477,7 @@ if st.session_state.user_role == "creator":
             st.error("❌ กรุณากรอกข้อมูลด่านหลักให้ครบถ้วน")
         else:
             with st.spinner("⏳ กำลังเชื่อมต่อและส่งข้อมูล..."):
-                time_lib.sleep(3)
+                time_lib.sleep(2)
             
             df_existing = conn.read(ttl="0d").dropna(subset=['doc_id_text'])
             next_id = 1 if df_existing.empty else int(df_existing['id'].max()) + 1
@@ -493,7 +558,6 @@ if st.session_state.user_role == "creator":
                 else:
                     c_status.markdown("⚪ <span style='color:gray; font-size:14px;'>ยกเลิกคำขอ</span>", unsafe_allow_html=True)
                 
-                # ปุ่มดาวน์โหลดรายงาน PDF สำหรับฝั่ง Creator
                 pdf_data = generate_report_pdf_weasy(row)
                 c_act.download_button(
                     label="📄 รายงาน",
@@ -521,7 +585,7 @@ else:
         
         if data['check_status'] != "รอตรวจเอกสาร":
             st.error("🔒 เอกสารรายการนี้ได้รับการพิจารณาและล็อกสถานะถาวรแล้ว ไม่สามารถแก้ไขได้")
-            time_lib.sleep(2); st.rerun(); return
+            time_lib.sleep(1); st.rerun(); return
 
         st.markdown(f"<h5>📦 คำขอเลขที่: <span style='color:#800000;'>{data['doc_id_text']}</span></h5>", unsafe_allow_html=True)
         st.write(f"**แหล่งที่มา:** {data['source_place']} | **ผู้ยื่นคำขอ:** {data['fullname']} | **ประเภทงาน:** {data['doc_type']} | **ผู้ตรวจเอกสาร:** {data['creator_name']} ({data['created_date_text']})")
@@ -530,7 +594,6 @@ else:
         col_detail, col_form = st.columns([1, 1])
         with col_detail:
             st.markdown("📋 **สรุปไฟล์แนบตรวจสอบเบื้องต้น:**")
-            # 🎯 ตรวจสอบเบื้องต้นแสดงค่าใน Modal ดึงข้อมูลได้สูงสุด 1-10 ช่องตามที่กรอกมา
             for i in range(1, 11):
                 status_key = f'doc{i}_status'
                 note_key = f'doc{i}_note'
