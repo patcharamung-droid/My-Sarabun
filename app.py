@@ -181,16 +181,16 @@ if "user_fullname" not in st.session_state: st.session_state.user_fullname = Non
 if not st.session_state.logged_in:
     st.markdown('<div class="login-bg-wrapper">', unsafe_allow_html=True)
     st.markdown('<h1 class="login-main-title">🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="login-subtitle">ส่วนใบอนุญาตและกำกับดูแล ตรวจสอบและติดตามสถานะเอกสารแบบเรียลไทม์</p>', unsafe_allow_html=True)
+    st.markdown('<p class="login-subtitle">ส่วนใบอนุญาต สำนักงาน กสทช. ภาค 2</p>', unsafe_allow_html=True)
     
     col_l1, col_l2, col_l3 = st.columns([1.1, 1, 1.1])
     with col_l2:
         with st.form(key='modern_login_form'):
-            st.markdown('<h3 class="login-form-header">🔐 เข้าสู่ระบบปฏิบัติการ</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 class="login-form-header">🔐 กรุณาเข้าสู่ระบบ</h3>', unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True)
             
             username_input = st.text_input("👤 ชื่อผู้ใช้งาน (Username)", placeholder="ระบุบัญชีผู้ใช้งาน")
-            password_input = st.text_input("🔑 รหัสผ่าน (Password)", type="password", placeholder="ระบุรหัสผ่านประกอบสิทธิ์")
+            password_input = st.text_input("🔑 รหัสผ่าน (Password)", type="password", placeholder="ระบุรหัสผ่าน")
             
             st.markdown("<br>", unsafe_allow_html=True)
             login_btn = st.form_submit_button("🔓 ยืนยันเข้าสู่ระบบ")
