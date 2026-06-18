@@ -71,7 +71,7 @@ st.markdown("""
             word-break: break-word;
         }
         
-        /* 🎯 [แก้ไขสำเร็จ] บังคับให้ข้อความหัวตารางแสดงผล "ตรงกลางช่อง" ตัวหนา และสีขาว */
+        /* 🎯 บังคับให้ข้อความหัวตารางแสดงผล "ตรงกลางช่อง" ตัวหนา และสีขาว */
         .table-header-text {
             font-size: 14px !important;
             font-family: 'Sarabun', sans-serif !important;
@@ -79,6 +79,25 @@ st.markdown("""
             font-weight: bold !important;
             text-align: center !important;
             width: 100%;
+        }
+
+        /* 🎨 สไตล์การตกแต่งสีสันการ์ดหน้าจอล็อกอิน */
+        .login-container {
+            background: linear-gradient(135deg, #fff5f5 0%, #fff0f2 100%);
+            border-left: 8px solid #800000;
+            border-right: 2px solid #ffccd5;
+            border-top: 2px solid #ffccd5;
+            border-bottom: 2px solid #ffccd5;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 24px rgba(128, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        .login-title-accent {
+            background: linear-gradient(45deg, #800000, #c41e3a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -103,26 +122,33 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_role" not in st.session_state: st.session_state.user_role = None
 if "user_fullname" not in st.session_state: st.session_state.user_fullname = None
 
-# --- หน้าจอเลือกล็อกอิน ---
+# --- หน้าจอเลือกล็อกอิน (เวอร์ชันเพิ่มสีสันสวยงาม) ---
 if not st.session_state.logged_in:
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
-    col_l1, col_l2, col_l3 = st.columns([1, 1.3, 1])
+    st.markdown("<br><h1 style='text-align: center; font-size: 2.3em;'>🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>ส่วนใบอนุญาตและกำกับดูแลตรวจสอบสถานะเอกสารแบบครบวงจร</p>", unsafe_allow_html=True)
+    
+    col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
     with col_l2:
+        st.markdown('<div class="login-container">', unsafe_allow_html=True)
         with st.form(key='login_form'):
-            st.markdown("<h3 style='text-align: center;'>🔐 เข้าสู่ระบบ</h3>", unsafe_allow_html=True)
-            username_input = st.text_input("ชื่อผู้ใช้งาน", placeholder="ระบุชื่อผู้ใช้งาน")
-            password_input = st.text_input("รหัสผ่าน", type="password", placeholder="••••••")
-            login_btn = st.form_submit_button("🔓 ล็อกอิน")
+            st.markdown("<h3 style='text-align: center; margin-top:0px;' class='login-title-accent'>🔐 เข้าสู่ระบบใช้งาน</h3>", unsafe_allow_html=True)
+            st.write("---")
+            username_input = st.text_input("👤 ชื่อผู้ใช้งาน (Username)", placeholder="ระบุชื่อผู้ใช้งานประจำการ")
+            password_input = st.text_input("🔑 รหัสผ่าน (Password)", type="password", placeholder="••••••")
+            st.markdown("<br>", unsafe_allow_html=True)
+            login_btn = st.form_submit_button("🔓 ยืนยันเข้าสู่ระบบ")
             
         if login_btn:
             if username_input in USERS and USERS[username_input]["password"] == password_input:
                 st.session_state.logged_in = True
                 st.session_state.user_role = USERS[username_input]["role"]
                 st.session_state.user_fullname = USERS[username_input]["name"]
-                st.success("🎉 ล็อกอินสำเร็จ...")
+                st.success("🎉 ล็อกอินสำเร็จ เข้าสู่ระบบงาน...")
                 time_lib.sleep(1)
                 st.rerun()
-            else: st.error("❌ บัญชีไม่ถูกต้อง")
+            else: 
+                st.error("❌ บัญชีผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
@@ -157,7 +183,7 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (หัวตารางในเอกสารเป็นตัวหนาสีขาวเรียบร้อย)
+# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (ขยายลูปเป็น 10 ช่องทางเอกสารแนบ)
 def generate_report_pdf_weasy(row_data):
     html_content = f"""
     <html>
@@ -173,20 +199,20 @@ def generate_report_pdf_weasy(row_data):
                 font-family: 'Sarabun', sans-serif;
                 color: #333;
                 line-height: 1.6;
-                font-size: 15px;
+                font-size: 14px;
             }}
             .title {{
                 color: #800000;
-                font-size: 24px;
+                font-size: 22px;
                 font-weight: bold;
                 text-align: center;
                 margin-bottom: 2px;
             }}
             .subtitle {{
-                font-size: 16px;
+                font-size: 15px;
                 text-align: center;
                 color: #555;
-                margin-bottom: 25px;
+                margin-bottom: 20px;
             }}
             .info-table {{
                 width: 100%;
@@ -199,7 +225,7 @@ def generate_report_pdf_weasy(row_data):
             }}
             .section-title {{
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 15px;
                 margin-top: 15px;
                 margin-bottom: 8px;
                 color: #333;
@@ -214,11 +240,11 @@ def generate_report_pdf_weasy(row_data):
                 color: #ffffff !important;
                 font-weight: bold !important;
                 text-align: left;
-                padding: 10px;
+                padding: 8px;
                 border: 1px solid #ccc;
             }}
             .data-table td {{
-                padding: 10px;
+                padding: 8px;
                 border: 1px solid #ccc;
             }}
             .status-pass {{ color: green; font-weight: bold; }}
@@ -228,22 +254,22 @@ def generate_report_pdf_weasy(row_data):
                 width: 100%;
                 border: 1px solid #ddd;
                 border-collapse: collapse;
-                margin-bottom: 40px;
+                margin-bottom: 30px;
             }}
             .summary-box td {{
-                padding: 12px;
+                padding: 10px;
                 border: 1px solid #ddd;
             }}
             .signature-container {{
                 width: 100%;
-                margin-top: 50px;
+                margin-top: 40px;
             }}
             .signature-box {{
                 width: 48%;
                 text-align: center;
                 display: inline-block;
                 vertical-align: top;
-                line-height: 2.0;
+                line-height: 1.8;
             }}
         </style>
     </head>
@@ -278,7 +304,8 @@ def generate_report_pdf_weasy(row_data):
             <tbody>
     """
     
-    for i in range(1, 7):
+    # วนลูปรันแสดงรายงานเอกสารแนบ 1-10 ช่องใน PDF
+    for i in range(1, 11):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
         if st_key in row_data and row_data[st_key] != "ไม่ได้ระบุ":
@@ -329,7 +356,7 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# เกลี่ยสัดส่วนคอลัมน์ตารางให้ชื่อผู้ยื่น (1.5) ผู้บันทึก (1.5) และผู้ตรวจ (1.5) มีพื้นที่กว้างพอดี ไม่ตัดข้อความ
+# จัดส่วนสัดส่วนคอลัมน์ตารางหน้าเว็บให้กว้างกระชับและสมส่วน
 col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 
@@ -339,6 +366,7 @@ col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1
 if st.session_state.user_role == "creator":
     st.subheader("📝 แบบเช็ครายการเอกสารคำขอและตรวจสอบเบื้องต้น")
     
+    # ปรับจำนวนเริ่มต้นการเห็นช่องเอกสารแนบเป็น 3 ช่อง และขยายได้สูงสุดถึง 10 ช่อง
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
 
@@ -354,10 +382,11 @@ if st.session_state.user_role == "creator":
             created_date = st.date_input("วันที่บันทึก *", datetime.now().date())
             
         st.write("---")
-        st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง)</h4>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง / สูงสุด 10 ช่อง)</h4>", unsafe_allow_html=True)
         
         doc_data_inputs = {}
-        for i in range(1, 7):
+        # 🎯 ขยายขอบเขตฟอร์มเอกสารแนบให้อ่านค่าได้สูงสุด 1-10 ช่อง
+        for i in range(1, 11):
             if i <= st.session_state.visible_docs:
                 status, note = render_doc_row(f"📄 เอกสาร {i}")
                 doc_data_inputs[f"doc{i}_status"] = status
@@ -367,11 +396,12 @@ if st.session_state.user_role == "creator":
                 doc_data_inputs[f"doc{i}_note"] = ""
             
         st.write("---")
-        submit_button = st.form_submit_button(label='💾 บันทึก')
+        submit_button = st.form_submit_button(label='💾 บันทึกเอกสารทั้งหมด')
 
     c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
     with c_btn1:
-        if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 6:
+        # ขยายขีดจำกัดจากเดิมเลข 6 เป็นเลข 10 ช่องเอกสาร
+        if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 10:
             st.session_state.visible_docs += 1; st.rerun()
     with c_btn2:
         if st.button("➖ ลบช่องเอกสาร") and st.session_state.visible_docs > 1:
@@ -500,7 +530,8 @@ else:
         col_detail, col_form = st.columns([1, 1])
         with col_detail:
             st.markdown("📋 **สรุปไฟล์แนบตรวจสอบเบื้องต้น:**")
-            for i in range(1, 7):
+            # 🎯 ตรวจสอบเบื้องต้นแสดงค่าใน Modal ดึงข้อมูลได้สูงสุด 1-10 ช่องตามที่กรอกมา
+            for i in range(1, 11):
                 status_key = f'doc{i}_status'
                 note_key = f'doc{i}_note'
                 if status_key in data and data[status_key] != "ไม่ได้ระบุ":
@@ -509,7 +540,7 @@ else:
                     
         with col_form:
             with st.form(key=f'modal_form_{doc_id}'):
-                final_status = st.selectbox("สถานะภาพรวม *", ["อนุมัติออกใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
+                final_status = st.selectbox("Final Status *", ["อนุมัติออกใบอนุญาต", "ไม่อนุมัติคำขอ", "ยกเลิกคำขอ"])
                 inspector_input = st.text_input("ผู้ลงนามอนุมัติ", value=st.session_state.user_fullname, disabled=True)
                 inspected_date = st.date_input("วันที่ลงนามอนุมัติ *", datetime.now().date())
                 
@@ -535,7 +566,6 @@ else:
         st.markdown("<h4 style='color:#800000;'>📊 สรุปข้อมูลรายการคำขอ</h4>", unsafe_allow_html=True)
         m1, m2, m3, m4 = st.columns(4)
         
-        # 🎯 [แก้ไขแล้ว] เปลี่ยนตัวนับบล็อกจาก 'อนุมัติพิมพ์ใบอนุญาต' ให้ตรงกับค่าในระบบคือ 'อนุมัติออกใบอนุญาต' เพื่อแสดงจำนวนที่ถูกต้อง
         m1.markdown(f"<div style='background-color:#fff5f5; padding:15px; border-radius:8px; border-left:5px solid orange; text-align:center;'><span style='color:#555;font-weight:bold;'>⏳ รอตรวจเอกสาร</span><br/><h2 style='color:orange;margin:5px;'>{len(df_all[df_all['check_status'] == 'รอตรวจเอกสาร'])}</h2></div>", unsafe_allow_html=True)
         m2.markdown(f"<div style='background-color:#f5fff5; padding:15px; border-radius:8px; border-left:5px solid green; text-align:center;'><span style='color:#555;font-weight:bold;'>🟢 อนุมัติออกใบอนุญาต</span><br/><h2 style='color:green;margin:5px;'>{len(df_all[df_all['check_status'] == 'อนุมัติออกใบอนุญาต'])}</h2></div>", unsafe_allow_html=True)
         m3.markdown(f"<div style='background-color:#fff0f0; padding:15px; border-radius:8px; border-left:5px solid #800000; text-align:center;'><span style='color:#555;font-weight:bold;'>🔴 ไม่อนุมัติคำขอ</span><br/><h2 style='color:#800000;margin:5px;'>{len(df_all[df_all['check_status'] == 'ไม่อนุมัติคำขอ'])}</h2></div>", unsafe_allow_html=True)
