@@ -610,4 +610,4 @@ else:
                     key=f"dl_inspector_{int(row['id'])}"
                 )
                 
-            st.markdown("</div>", unsafe_allow_html=True)  **โค๊ดสมบูรณ์**
+            st.markdown("</div>", unsafe_allow_html=True)
