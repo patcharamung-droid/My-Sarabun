@@ -11,45 +11,29 @@ from weasyprint import HTML
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# 🏛️ [ระบบดีไซน์ใหม่] CSS ตกแต่งหน้าล็อกอินและฟอร์มให้ทันสมัยสไตล์โมเดิร์น
+# 🏛️ [ปรับปรุง CSS หน้าล็อกอินใหม่] แก้ไขรอยต่อของฟอร์ม ไม่ให้เกิดกล่องซ้อน
 st.markdown("""
     <style>
-        /* นำเข้าฟอนต์ Google Fonts เพื่อความสวยงาม */
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Sarabun:wght@300;400;600;700&display=swap');
         
-        /* ซ่อนเครื่องมือระบบของ Streamlit เพื่อความเป็นส่วนตัว */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
         div[data-testid="stToolbar"] {display: none !important;}
         button[title="View source code"] {display: none !important;}
         
-        /* สไตล์ฟอนต์โดยรวมของระบบ */
         html, body, [data-testid="stAppViewContainer"] {
             font-family: 'Sarabun', sans-serif;
         }
         
-        /* 1. พื้นหลังหน้าล็อกอินสีแดงอ่อนๆ แบบไล่เฉดละมุน (Soft Light Red Background) */
+        /* พื้นหลังรอบข้างสีแดงอ่อนๆ ละมุนตา */
         .login-bg-wrapper {
             background: linear-gradient(180deg, #fffcfc 0%, #fff2f2 60%, #ffe8e8 100%);
             padding: 40px 20px;
             border-radius: 24px;
-            box-shadow: inset 0 0 40px rgba(128, 0, 0, 0.02);
             margin-top: 10px;
         }
 
-        /* 2. กล่องล็อกอินสไตล์โมเดิร์น ทันสมัย มินิมอลการ์ด */
-        .modern-login-card {
-            background-color: #ffffff;
-            border: 1px solid rgba(255, 200, 200, 0.5);
-            border-top: 5px solid #800000; /* แถบสีแดงเลือดหมูด้านบนเพิ่มมิติ */
-            border-radius: 18px;
-            padding: 35px;
-            box-shadow: 0 12px 35px rgba(128, 0, 0, 0.06);
-            transition: all 0.3s ease;
-        }
-        
-        /* 3. จัดการตัวหนังสือให้สวยงาม (Beautiful Typography) */
         .login-main-title {
             font-family: 'Kanit', sans-serif !important;
             font-weight: 600 !important;
@@ -66,7 +50,6 @@ st.markdown("""
             color: #775555;
             text-align: center;
             margin-bottom: 25px;
-            letter-spacing: 0.3px;
         }
         .login-form-header {
             font-family: 'Kanit', sans-serif !important;
@@ -77,7 +60,17 @@ st.markdown("""
             margin-top: 0px;
         }
 
-        /* ตกแต่งช่องกรอกข้อมูล (Modern Inputs Setup) */
+        /* 🎯 ตกแต่ง stForm ให้เป็นการ์ดโมเดิร์นในปุ่มเดียว (แก้ปัญหากล่องซ้อนซ้ำ) */
+        div[data-testid="stForm"] { 
+            background-color: #ffffff !important;
+            border: 1px solid rgba(255, 200, 200, 0.6) !important;
+            border-top: 5px solid #800000 !important; /* แถบแดงบนสุดเพิ่มความเฉี่ยว */
+            border-radius: 18px !important;
+            padding: 35px !important;
+            box-shadow: 0 12px 35px rgba(128, 0, 0, 0.07) !important;
+        }
+
+        /* รูปแบบช่องกรอกข้อมูลสุดทันสมัย */
         div[data-testid="stTextInput"] input {
             border-radius: 10px !important;
             border: 1px solid #dcd0d0 !important;
@@ -98,9 +91,9 @@ st.markdown("""
             font-size: 14px !important;
         }
 
-        /* ตกแต่งปุ่มกดหลักในระบบ */
+        /* ปุ่มกดล็อกอินสีแดง Gradient กว้างเต็มช่องกางออกสวยงาม */
         div.stButton > button:first-child { 
-            background: linear-gradient(90deg, #800000 0%, #a31d1d 100%);
+            background: linear-gradient(90deg, #800000 0%, #a31d1d 100%) !important;
             color: white !important; 
             border: none !important;
             border-radius: 10px !important; 
@@ -108,94 +101,26 @@ st.markdown("""
             font-family: 'Kanit', sans-serif !important;
             font-weight: 500 !important;
             font-size: 16px !important;
-            width: 100% !important; /* ปรับขนาดปุ่มล็อกอินให้กว้างเต็มตา */
-            box-shadow: 0 4px 12px rgba(128, 0, 0, 0.15);
-            transition: all 0.2s ease;
+            width: 100% !important;
+            box-shadow: 0 4px 12px rgba(128, 0, 0, 0.15) !important;
         }
         div.stButton > button:first-child:hover { 
-            background: linear-gradient(90deg, #550000 0%, #800000 100%);
-            box-shadow: 0 6px 18px rgba(128, 0, 0, 0.25);
-            transform: translateY(-1px);
-        }
-        
-        /* สไตล์ฟอร์มและตารางข้อมูลภายในแอปพลิเคชัน */
-        div[data-testid="stForm"] { 
-            border: 1px solid rgba(128, 0, 0, 0.2) !important; 
-            border-radius: 14px !important; 
-            background-color: #fffbfa; 
-            padding: 25px !important; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-        }
-        
-        h1, h2, h3, h4 { 
-            color: #800000 !important; 
-            font-family: 'Kanit', sans-serif; 
-        }
-        
-        section[data-testid="stSidebar"] { 
-            background-color: #4a0000; 
-        }
-        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
-            color: #ffffff !important; 
-            font-family: 'Kanit', sans-serif;
-        }
-
-        .sidebar-watermark {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 260px; 
-            text-align: center;
-            color: rgba(255, 255, 255, 0.35) !important; 
-            font-size: 12px;
-            font-family: 'Sarabun', sans-serif;
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        .table-header-text {
-            font-size: 14px !important;
-            font-family: 'Kanit', sans-serif !important;
-            color: #ffffff !important;
-            font-weight: 500 !important;
-            text-align: center !important;
-            width: 100%;
+            background: linear-gradient(90deg, #550000 0%, #800000 100%) !important;
+            box-shadow: 0 6px 18px rgba(128, 0, 0, 0.25) !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-def get_gsheet_connection():
-    try:
-        return st.connection("gsheets", type=GSheetsConnection)
-    except Exception as e:
-        st.error("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบ Secrets")
-        st.stop()
 
-conn = get_gsheet_connection()
-
-USERS = {
-    "Patchara.mu": {"password": "431799", "role": "creator", "name": "นายพัชระ มุงคุลคำซาว"},
-    "Supachai.t": {"password": "431612", "role": "creator", "name": "นายศุภชัย ไทยโส"},
-    "Theera.j": {"password": "431800", "role": "creator", "name": "นายธีระ จงสมชัย"},
-    "Songyos.r": {"password": "431522", "role": "inspector", "name": "นายทรงยศ รังษา"}
-}
-
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "user_role" not in st.session_state: st.session_state.user_role = None
-if "user_fullname" not in st.session_state: st.session_state.user_fullname = None
-
-# --- ส่วนของการแสดงผล: หน้าจอล็อกอินใหม่ดีไซน์โมเดิร์นตามโจทย์ ---
+# --- โค้ดโครงสร้างหน้าจอล็อกอินที่ปรับใหม่ (นำเอา <div> ออกเพื่อให้แสดงผลสมบูรณ์) ---
 if not st.session_state.logged_in:
-    # เปิดการใช้งาน Wrapper ควบคุมพื้นหลังสีแดงพาสเทลอ่อนๆ ทั่วบริเวณล็อกอิน
     st.markdown('<div class="login-bg-wrapper">', unsafe_allow_html=True)
-    
     st.markdown('<h1 class="login-main-title">🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>', unsafe_allow_html=True)
     st.markdown('<p class="login-subtitle">ส่วนใบอนุญาตและกำกับดูแล ตรวจสอบและติดตามสถานะเอกสารแบบเรียลไทม์</p>', unsafe_allow_html=True)
     
     col_l1, col_l2, col_l3 = st.columns([1.1, 1, 1.1])
     with col_l2:
-        # เปิดหน้ากากกล่องสไตล์โมเดิร์น
-        st.markdown('<div class="modern-login-card">', unsafe_allow_html=True)
+        # เรียกใช้งานฟอร์มตรง ๆ สไตล์โมเดิร์นจะประกอบร่างเข้าที่ฟอร์มทันทีอย่างสวยงาม
         with st.form(key='modern_login_form'):
             st.markdown('<h3 class="login-form-header">🔐 เข้าสู่ระบบปฏิบัติการ</h3>', unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True)
@@ -216,9 +141,8 @@ if not st.session_state.logged_in:
                 st.rerun()
             else: 
                 st.error("❌ บัญชีผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    st.markdown('</div>', unsafe_allow_html=True) # ปิดกล่องควบคุมพื้นหลังสีแดงอ่อน
+                
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- แถบควบคุมข้างทาง (Sidebar) ---
