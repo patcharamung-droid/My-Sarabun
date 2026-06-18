@@ -11,7 +11,7 @@ from weasyprint import HTML
 # ตั้งค่าหน้าเว็บและสไตล์สีแดงเลือดหมูพรีเมียม
 st.set_page_config(page_title="ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต", layout="wide")
 
-# 🏛️ [ระบบดีไซน์ใหม่] CSS ตกแต่งหน้าล็อกอินให้สมบูรณ์แบบ ไร้กล่องขาวซ้อน และปรับฟอร์มให้ทันสมัย
+# 🏛️ [ระบบดีไซน์ใหม่] CSS เปลี่ยนพื้นหลังทั้งหมดเป็นสีแดงอ่อน และปรับฟอร์มให้ทันสมัยสไตล์โมเดิร์น
 st.markdown("""
     <style>
         /* นำเข้าฟอนต์ Google Fonts เพื่อความสวยงาม */
@@ -24,17 +24,19 @@ st.markdown("""
         div[data-testid="stToolbar"] {display: none !important;}
         button[title="View source code"] {display: none !important;}
         
+        /* 🎯 [แก้ไขสำเร็จ] บังคับให้พื้นหลังของหน้าเว็บ "ทั้งหมด" เป็นสีแดงอ่อนพาสเทลละมุนตา */
+        .stApp {
+            background: linear-gradient(180deg, #fffcfc 0%, #fff4f4 50%, #ffebeb 100%) !important;
+        }
+        
         /* สไตล์ฟอนต์รวมของระบบ */
         html, body, [data-testid="stAppViewContainer"] {
             font-family: 'Sarabun', sans-serif;
         }
         
-        /* 1. พื้นหลังหน้าล็อกอินสีแดงอ่อนๆ แบบไล่เฉดละมุนตา (Soft Light Red Background) */
+        /* กล่องครอบเนื้อหาหน้าล็อกอิน */
         .login-bg-wrapper {
-            background: linear-gradient(180deg, #fffcfc 0%, #fff2f2 60%, #ffe8e8 100%);
-            padding: 40px 20px;
-            border-radius: 24px;
-            box-shadow: inset 0 0 40px rgba(128, 0, 0, 0.02);
+            padding: 20px;
             margin-top: 10px;
         }
 
@@ -66,14 +68,14 @@ st.markdown("""
             margin-top: 0px;
         }
 
-        /* 2. ตกแต่ง stForm ให้เป็นการ์ดโมเดิร์นในชิ้นเดียว (แก้ไขปัญหาช่องขาวซ้อนลอย) */
+        /* ตกแต่ง stForm ให้เป็นการ์ดโมเดิร์นสีขาวเด่น ตัดกับพื้นหลังสีแดงอ่อน */
         div[data-testid="stForm"] { 
             background-color: #ffffff !important;
-            border: 1px solid rgba(255, 200, 200, 0.6) !important;
+            border: 1px solid rgba(255, 180, 180, 0.5) !important;
             border-top: 5px solid #800000 !important; /* แถบสีแดงเลือดหมูด้านบนเพิ่มมิติพรีเมียม */
             border-radius: 18px !important;
             padding: 35px !important;
-            box-shadow: 0 12px 35px rgba(128, 0, 0, 0.07) !important;
+            box-shadow: 0 15px 40px rgba(128, 0, 0, 0.08) !important;
         }
 
         /* ตกแต่งช่องกรอกข้อมูลให้ดูโมเดิร์นทันสมัย (Modern Inputs) */
@@ -175,7 +177,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "user_role" not in st.session_state: st.session_state.user_role = None
 if "user_fullname" not in st.session_state: st.session_state.user_fullname = None
 
-# --- หน้าจอเลือกล็อกอินใหม่ (แก้ไขปัญหากล่องขาวซ้อนแล้ว) ---
+# --- หน้าจอเลือกล็อกอินใหม่ (พื้นหลังหน้าจอทั้งหมดเป็นสีแดงอ่อนพาสเทล) ---
 if not st.session_state.logged_in:
     st.markdown('<div class="login-bg-wrapper">', unsafe_allow_html=True)
     st.markdown('<h1 class="login-main-title">🏛️ ระบบตรวจเช็ครายการเอกสารคำขอใบอนุญาต</h1>', unsafe_allow_html=True)
@@ -183,7 +185,6 @@ if not st.session_state.logged_in:
     
     col_l1, col_l2, col_l3 = st.columns([1.1, 1, 1.1])
     with col_l2:
-        # ใช้งาน st.form ตรงๆ เพื่อให้ CSS ผสานโครงสร้างเป็นเนื้อเดียวกัน ไม่แยกกล่อง
         with st.form(key='modern_login_form'):
             st.markdown('<h3 class="login-form-header">🔐 เข้าสู่ระบบปฏิบัติการ</h3>', unsafe_allow_html=True)
             st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True)
@@ -240,7 +241,7 @@ def load_data():
     except: return pd.DataFrame()
 
 
-# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint (ขยายขอบเขตลูปตารางเป็นรองรับสูงสุด 10 ลำดับเอกสาร)
+# ✨ ฟังก์ชันเจน PDF ด้วย WeasyPrint
 def generate_report_pdf_weasy(row_data):
     html_content = f"""
     <html>
@@ -361,7 +362,6 @@ def generate_report_pdf_weasy(row_data):
             <tbody>
     """
     
-    # วนลูปสร้างรายละเอียดเอกสารแนบในไฟล์ PDF ได้สูงสุดถึง 10 ลำดับ
     for i in range(1, 11):
         st_key = f'doc{i}_status'
         nt_key = f'doc{i}_note'
@@ -413,7 +413,6 @@ def generate_report_pdf_weasy(row_data):
     return HTML(string=html_content).write_pdf()
 
 
-# สัดส่วนความกว้างของคอลัมน์ตารางสารบรรณหน้าเว็บหลัก
 col_widths_creator = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1.3]
 
@@ -423,7 +422,6 @@ col_widths_inspector = [0.4, 1.0, 1.0, 1.5, 1.5, 1.7, 0.9, 1.3, 0.9, 1.4, 1.1, 1
 if st.session_state.user_role == "creator":
     st.subheader("📝 แบบเช็ครายการเอกสารคำขอและตรวจสอบเบื้องต้น")
     
-    # กำหนดค่าเริ่มต้นเอกสารไว้ที่ 3 ช่อง และตั้งขีดจำกัดสูงสุดขยายได้ถึง 10 ช่องตามเงื่อนไขใหม่
     if 'visible_docs' not in st.session_state: 
         st.session_state.visible_docs = 3
 
@@ -442,7 +440,6 @@ if st.session_state.user_role == "creator":
         st.markdown(f"<h4 style='color:#800000;'>📄 รายการตรวจเช็คเอกสารแนบ (กำลังเปิดใช้งาน {st.session_state.visible_docs} ช่อง / สูงสุด 10 ช่อง)</h4>", unsafe_allow_html=True)
         
         doc_data_inputs = {}
-        # ดึงช่องข้อมูลอินพุตขยายขอบเขตจาก 1 ถึง 10 รายการเรียบร้อยแล้ว
         for i in range(1, 11):
             if i <= st.session_state.visible_docs:
                 status, note = render_doc_row(f"📄 เอกสาร {i}")
@@ -457,7 +454,6 @@ if st.session_state.user_role == "creator":
 
     c_btn1, c_btn2, _ = st.columns([1.2, 1.4, 5])
     with c_btn1:
-        # ปรับเพิ่มเงื่อนไขปุ่มกดให้ขยายสูงสุดได้ถึง 10 ช่อง
         if st.button("➕ เพิ่มช่องเอกสาร") and st.session_state.visible_docs < 10:
             st.session_state.visible_docs += 1; st.rerun()
     with c_btn2:
@@ -586,7 +582,6 @@ else:
         col_detail, col_form = st.columns([1, 1])
         with col_detail:
             st.markdown("📋 **สรุปไฟล์แนบตรวจสอบเบื้องต้น:**")
-            # ในหน้าต่าง Modal ตรวจสอบรายการ ฝั่งอนุมัติก็ได้รับการขยายวนลูปให้อ่านค่า 1-10 เช่นเดียวกัน
             for i in range(1, 11):
                 status_key = f'doc{i}_status'
                 note_key = f'doc{i}_note'
@@ -696,5 +691,4 @@ else:
                     key=f"dl_inspector_{int(row['id'])}"
                 )
                 
-            st.markdown("</div>", unsafe_allow_html=True) # ปิดบรรทัดตารางแถวข้อมูลอย่างปลอดภัย
-        
+            st.markdown("</div>", unsafe_allow_html=True)
